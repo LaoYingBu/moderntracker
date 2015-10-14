@@ -19,12 +19,11 @@ const int fast_step = 2;
 const int fine_n = 600;
 const int cell_n = 150;
 const int fine_steps[] = { 27, 9, 3, 1 };
-const int max_iteration = 8;
-const float padding = 1.5f;
+const int max_iteration = 9;
+const float padding = 1.6f;
 const float sigmoid_factor = 7.2f;
 const float sigmoid_bias = 0.48f;
-const float translate_eps = 0.005f;
-const float interp_factor = 0.02f;
+const float translate_eps = 0.01f;
 const float threshold_error = 0.4f;
 
 class Surf
@@ -33,7 +32,7 @@ public:
 	Surf(Size size);
 	
 	Matx14f kernel(float angle);
-	void process(Mat img, float angle);
+	void process(Mat gray, float angle);
 	void set_cell(float cell);
 	void set_step(int step);	
 
@@ -49,7 +48,7 @@ public:
 	Matx14f kx, ky;
 	int W, H, C, step;
 
-private:	
+private:
 	Mat grad, sum, zero, flag, hist, norm;
 };
 
@@ -59,7 +58,7 @@ public:
 	Warp(Size size);
 
 	void set(Matx13f rotate);
-	void set(Point3f translate);	
+	void set(Point3f translate);
 			
 	Point2f project(Point3f p);
 	Point3f transform(Point3f p);
@@ -82,11 +81,11 @@ private:
 class MT
 {
 public:
-	MT(Mat img, Rect2f rect, ostream *os = NULL);
+	MT(Mat gray, Rect2f rect, ostream *os = NULL);
 
-	void suggest(Rect2f rect);
-	Rect2f track(Mat img);
-	bool check();
+	void restart(Rect2f rect);
+	Rect2f track(Mat gray);
+	bool miss();
 	
 private:
 	Point3f locate(Rect2f rect);
@@ -111,6 +110,7 @@ private:
 	vector<Point> fast_samples;				
 	vector<Point3f> fine_samples;
 	Mat fast_model, fine_model;
+	int failed, trained;
 
 public:
 	float error, roll, yaw, pitch;	

@@ -1,0 +1,5 @@
+/bin/
+/obj/
+/benchmark/
+*.opensdf
+*.suo

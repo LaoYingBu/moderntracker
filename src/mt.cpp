@@ -26,7 +26,7 @@ Matx14f Surf::kernel(float angle)
 	return Matx14f(wx, wy, wu, wv);
 }
 
-void Surf::process(Mat img, float angle)
+void Surf::process(Mat gray, float angle)
 {		
 	this->angle = angle;
 	Matx14f kx = kernel(angle), ky = kernel(angle + PI_2);
@@ -34,9 +34,9 @@ void Surf::process(Mat img, float angle)
 	for (int y = 0; y < H; ++y) {
 		int y0 = y > 0 ? y - 1 : y;
 		int y1 = y < H - 1 ? y + 1 : y;
-		uchar *ptr_y0 = img.ptr<uchar>(y0);
-		uchar *ptr_y = img.ptr<uchar>(y);
-		uchar *ptr_y1 = img.ptr<uchar>(y1);
+		uchar *ptr_y0 = gray.ptr<uchar>(y0);
+		uchar *ptr_y = gray.ptr<uchar>(y);
+		uchar *ptr_y1 = gray.ptr<uchar>(y1);
 		for (int x = 0; x < W; ++x) {
 			int x0 = x > 0 ? x - 1 : x;
 			int x1 = x < W - 1 ? x + 1 : x;
@@ -307,9 +307,9 @@ void Warp::euler(float &roll, float &yaw, float &pitch)
 	}
 }
 
-MT::MT(Mat img, Rect2f rect, ostream *os):
+MT::MT(Mat gray, Rect2f rect, ostream *os):
 	log(os),
-	image_size(img.size()),
+	image_size(gray.size()),
 	window_size(rect.size()),
 	feature(image_size),
 	warp(image_size)
@@ -322,26 +322,30 @@ MT::MT(Mat img, Rect2f rect, ostream *os):
 	for (int x = 0; x <= 2 * W; ++x) 
 		fine_samples.push_back(Point3f((x - W) * fine_stride, (y - H) * fine_stride, 0.0f));
 	
-	feature.process(img, 0.0f);
+	feature.process(gray, 0.0f);
+	failed = trained = 0;
 	fine_train(warp);
 	fast_train(warp);
 	error = 0.0f;
-	roll = yaw = pitch = 0.0f;
+	roll = yaw = pitch = 0.0f;	
 }
 
-void MT::suggest(Rect2f rect)
+void MT::restart(Rect2f rect)
 {
 	candidates.push_back(locate(rect));
 }
 
-Rect2f MT::track(Mat img)
+Rect2f MT::track(Mat gray)
 {			
 	if (log != NULL) {
 		(*log) << "roll = " << roll * 90.0f / PI_2 << endl;
 		(*log) << "yaw = " << yaw * 90.0f / PI_2 << endl;
 		(*log) << "pitch = " << pitch * 90.0f / PI_2 << endl;
 	}
-	feature.process(img, roll);
+	if (candidates.empty())
+		feature.process(gray, roll);
+	else
+		feature.process(gray, 0.0f);
 
 	candidates.push_back(warp.t);
 	candidates.push_back(fast_test(warp));
@@ -352,7 +356,8 @@ Rect2f MT::track(Mat img)
 		if (log != NULL)
 			(*log) << "candidate " << t << " " << window(t) << endl;
 		Warp w(image_size);
-		w.set(warp.r);
+		if (candidates.size() == 2)
+			w.set(warp.r);
 		w.set(t);
 		w = fine_test(w);
 		float e = evaluate(w);
@@ -369,21 +374,29 @@ Rect2f MT::track(Mat img)
 	candidates.clear();	
 		
 	error = best_error;
-	if (check()) {
+	if (error < threshold_error) {
+		failed = 0;
 		warp = best_warp;
 		warp.euler(roll, yaw, pitch);
-		fine_train(warp);	
+		fine_train(warp);
 	}
-	else 
-		warp.t = best_warp.t * (warp.t.z / best_warp.t.z);		
+	else {
+		++failed;
+		warp.t = best_warp.t * (warp.t.z / best_warp.t.z);
+	}
 	fast_train(warp);
 	
 	return window(best_warp.t);
 }
 
-bool MT::check()
+bool MT::miss()
 {
-	return error < threshold_error;
+	if (failed > 10) {
+		failed = 0;
+		return true;
+	}
+	else
+		return false;
 }
 
 Point3f MT::locate(Rect2f rect)
@@ -443,11 +456,15 @@ void MT::fine_train(Warp warp)
 	for (int i = 0; i < fine_samples.size(); ++i) {
 		Point2f p = warp.transform2(fine_samples[i]);
 		feature.descriptor4(p.x, p.y, model.ptr<float>(i));
-	}
-	if (fine_model.empty())
+	}	
+	if (fine_model.empty()) {
+		trained = 1;
 		fine_model = model;
-	else
-		fine_model = (1.0f - interp_factor) * fine_model + interp_factor * model;
+	}
+	else {
+		++trained;
+		fine_model = (float(trained - 1) / trained) * fine_model + (1.0f / trained) * model;
+	}
 }
 
 Point3f MT::fast_test(Warp warp)
