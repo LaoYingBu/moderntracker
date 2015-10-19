@@ -10,7 +10,7 @@ using namespace cv;
 #include <cstring>
 using namespace std;
 
-const int L = 8;
+const int L = 8, L4 = L * 4;
 const float PI_2 = acos(-1.0f) * 0.5f;
 
 const int cell_min = 2;
@@ -24,7 +24,6 @@ const float padding = 1.6f;
 const float sigmoid_factor = 7.141f;
 const float sigmoid_bias = 0.482f;
 const float translate_eps = 0.005f;
-const float interp_factor = 0.02f;
 const float threshold_error = 0.4f;
 
 class Surf
@@ -84,9 +83,8 @@ class MT
 public:
 	MT(Mat img, Rect2f rect, ostream *os = NULL);
 
-	bool miss();
-	void restart(Rect2f rect);
-	Rect2f track(Mat img);
+	bool miss();	
+	Rect2f track(Mat img, const vector<Rect2f> &detections = vector<Rect2f>());
 
 private:
 	Point3f locate(Rect2f rect);
@@ -106,13 +104,12 @@ private:
 	Size image_size;
 	Size2f window_size;
 	Surf feature;
-	Warp warp;
-	vector<Point3f> candidates;
+	Warp warp;	
 	vector<Point> fast_samples;
 	vector<Point3f> fine_samples;
 	Mat fast_model, fine_model;
 
 public:
 	float error, roll, yaw, pitch;
-	int count;
+	int count, N;
 };

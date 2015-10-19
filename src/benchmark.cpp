@@ -48,11 +48,10 @@ namespace benchmark
 							log << "\t" << r;
 							if (seq->clear(i))
 								log << " " << overlap(r, gt);
-							log << endl;
-							mt->restart(r);
+							log << endl;							
 						}
 					}
-					ret = round(mt->track(gray));
+					ret = round(mt->track(gray, detections));
 				}
 				log << "result : " << ret << endl;
 				if (seq->clear(i)) 

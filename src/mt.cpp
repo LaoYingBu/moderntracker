@@ -84,7 +84,6 @@ void Surf::process(Mat img, float angle)
 
 void Surf::set_cell(float cell)
 {
-	/*
 	cell = cell * 0.5f;
 	tx[0] = -cell; ty[0] = -cell;
 	tx[1] = cell; ty[1] = -cell;
@@ -96,7 +95,6 @@ void Surf::set_cell(float cell)
 		tx[i] = x;
 		ty[i] = y;
 	}
-	*/
 	C = max(int(floor(cell)), cell_min);
 }
 
@@ -186,21 +184,23 @@ void Surf::gradient(float x, float y, float *f, float *dx, float *dy)
 }
 
 void Surf::descriptor4(float x, float y, float *f)
-{	
-	descriptor(x, y, f);
+{
+	for (int i = 0; i < 4; ++i)
+		descriptor(x + tx[i], y + ty[i], f + i * L);
 	float S = 0.0f;
-	for (int i = 0; i < L; ++i)
+	for (int i = 0; i < L4; ++i)
 		S += f[i] * f[i];
 	float iS = S < 1.0f ? 0.0f : 1.0f / sqrt(S);
-	for (int i = 0; i < L; ++i)
+	for (int i = 0; i < L4; ++i)
 		f[i] *= iS;
 }
 
 void Surf::gradient4(float x, float y, float *f, float *dx, float *dy)
-{	
-	gradient(x, y, f, dx, dy);
+{
+	for (int i = 0; i < 4; ++i)
+		gradient(x + tx[i], y + ty[i], f + i * L, dx + i * L, dy + i * L);
 	float S = 0.0f, Sx = 0.0f, Sy = 0.0f;
-	for (int i = 0; i < L; ++i) {
+	for (int i = 0; i < L4; ++i) {
 		S += f[i] * f[i];
 		Sx += f[i] * dx[i];
 		Sy += f[i] * dy[i];
@@ -208,7 +208,7 @@ void Surf::gradient4(float x, float y, float *f, float *dx, float *dy)
 	float iS = S < 1.0f ? 0.0f : 1.0f / sqrt(S);
 	float iSx = Sx * iS * iS * iS;
 	float iSy = Sy * iS * iS * iS;
-	for (int i = 0; i < L; ++i) {
+	for (int i = 0; i < L4; ++i) {
 		dx[i] = dx[i] * iS - f[i] * iSx;
 		dy[i] = dy[i] * iS - f[i] * iSy;
 		f[i] *= iS;
@@ -327,39 +327,43 @@ warp(image_size)
 	fast_train(warp);
 	error = 0.0f;
 	roll = yaw = pitch = 0.0f;
-	count = 0;
+	count = N = 0;
 }
 
 bool MT::miss()
 {
-	return count >= 10;
+	if (count >= 10) {
+		count = 0;
+		return true;
+	}
+	else
+		return false;
 }
 
-void MT::restart(Rect2f rect)
-{
-	count = 0;
-	candidates.push_back(locate(rect));
-}
-
-Rect2f MT::track(Mat img)
+Rect2f MT::track(Mat img, const vector<Rect2f> &detections)
 {
 	if (log != NULL) {
 		(*log) << "roll = " << roll * 90.0f / PI_2 << endl;
 		(*log) << "yaw = " << yaw * 90.0f / PI_2 << endl;
 		(*log) << "pitch = " << pitch * 90.0f / PI_2 << endl;
-	}
+	}	
+	if (!detections.empty())
+		roll = 0.0f;
 	feature.process(img, roll);
-
+	vector<Point3f> candidates;
 	candidates.push_back(warp.t);
 	candidates.push_back(fast_test(warp));
-
+	for (auto d : detections)
+		candidates.push_back(locate(d));
+	
 	Warp best_warp(image_size);
 	float best_error = 1.0f;
 	for (auto& t : candidates) {
 		if (log != NULL)
 			(*log) << "candidate " << t << " " << window(t) << endl;
 		Warp w(image_size);
-		w.set(warp.r);
+		if (detections.empty())
+			w.set(warp.r);
 		w.set(t);
 		w = fine_test(w);
 		float e = evaluate(w);
@@ -390,7 +394,6 @@ Rect2f MT::track(Mat img)
 
 	return window(best_warp.t);
 }
-
 
 Point3f MT::locate(Rect2f rect)
 {
@@ -445,15 +448,19 @@ void MT::fine_train(Warp warp)
 	feature.set_cell(fine_cell);
 	feature.set_step(1);
 
-	Mat model(fine_samples.size(), L, CV_32FC1);
+	Mat model(fine_samples.size(), L4, CV_32FC1);
 	for (int i = 0; i < fine_samples.size(); ++i) {
 		Point2f p = warp.transform2(fine_samples[i]);
 		feature.descriptor4(p.x, p.y, model.ptr<float>(i));
 	}
-	if (fine_model.empty())
+	if (fine_model.empty()) {
+		N = 1;
 		fine_model = model;
-	else
-		fine_model = (1.0f - interp_factor) * fine_model + interp_factor * model;
+	}
+	else {
+		++N;
+		fine_model = (float(N - 1) / N) * fine_model + (1.0f / N) * model;		
+	}
 }
 
 Point3f MT::fast_test(Warp warp)
@@ -524,11 +531,11 @@ Warp MT::Lucas_Kanade(Warp warp)
 		H = 0.0f;
 		float E = 0.0f;
 		for (int i = 0; i < fine_samples.size(); ++i) {
-			Matx<float, L, 1> T(fine_model.ptr<float>(i)), F;
-			Matx<float, 2, L> dF;
+			Matx<float, L4, 1> T(fine_model.ptr<float>(i)), F;
+			Matx<float, 2, L4> dF;
 			Matx<float, 2, 6> dW = warp.gradient(fine_samples[i]);
 			Point2f p = warp.transform2(fine_samples[i]);
-			feature.gradient4(p.x, p.y, F.val, dF.val, dF.val + L);
+			feature.gradient4(p.x, p.y, F.val, dF.val, dF.val + L4);
 			T -= F;
 			float e = sigmoid(T.dot(T));
 			E += e;
@@ -536,16 +543,15 @@ Warp MT::Lucas_Kanade(Warp warp)
 			G += w * (dW.t() * (dF * T));
 			H += w * (dW.t() * (dF * dF.t()) * dW);
 		}
-
-
-		E = E / fine_samples.size();
-		if (log != NULL)
-			(*log) << "\terror in iteration " << iter << " = " << E << endl;
+		E = E / fine_samples.size();		
 		Matx61f D;
 		solve(H, G, D, DECOMP_SVD);
 		warp.steepest(D);
-		if (iter > 1 && D(3) * D(3) + D(4) * D(4) + D(5) * D(5) < translate_eps)
+		if (iter > 1 && D(3) * D(3) + D(4) * D(4) + D(5) * D(5) < translate_eps) {
+			if (log != NULL)
+				(*log) << "\terror in iteration " << iter << " = " << E << endl;
 			break;
+		}
 	}
 	return warp;
 }
@@ -559,7 +565,7 @@ float MT::evaluate(Warp warp)
 
 	float E = 0.0f;
 	for (int i = 0; i < fine_samples.size(); ++i) {
-		Matx<float, L, 1> T(fine_model.ptr<float>(i)), I;
+		Matx<float, L4, 1> T(fine_model.ptr<float>(i)), I;
 		Point2f p = warp.transform2(fine_samples[i]);
 		feature.descriptor4(p.x, p.y, I.val);
 		T -= I;
