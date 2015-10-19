@@ -78,3 +78,21 @@ public:
 	string type;
 	vector<Rect> rects;
 };
+
+class Statistics
+{
+public:
+	Statistics(int isSeq);
+
+	void frame(Rect gt, Rect ret, vector<Rect2f> *detections = NULL);
+
+public:
+	int nSeq, nFrame, nClear, nUnclear;
+	int n50, n80, nDetect;
+	int nDetectUnclear, nDetect50;
+	double scores, scoresDetect, secs;
+	clock_t start_clock;
+};
+
+ostream& operator<<(ostream& cout, const Statistics &st);
+Statistics& operator+=(Statistics& st, const Statistics &opt);

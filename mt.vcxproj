@@ -83,10 +83,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\benchmark.cpp" />
+    <ClCompile Include="src\camera.cpp" />
     <ClCompile Include="src\common.cpp" />
     <ClCompile Include="src\jsoncpp.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\mt.cpp" />
+    <ClCompile Include="src\unittest.cpp" />
+    <ClCompile Include="src\video.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

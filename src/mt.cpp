@@ -14,59 +14,59 @@ Surf::Surf(Size size)
 }
 
 Matx14f Surf::kernel(float angle)
-{		
+{
 	float c = cos(angle), s = sin(angle);
 	float wx = c * (1.0f - abs(s));
 	float wy = s * (1.0f - abs(c));
-	float wu = 0.0f, wv = 0.0f;	
+	float wu = 0.0f, wv = 0.0f;
 	if (c >= 0)
 		(s >= 0 ? wu : wv) = c * s;
 	else
-		(s >= 0 ? wv : wu) = -c * s;		
+		(s >= 0 ? wv : wu) = -c * s;
 	return Matx14f(wx, wy, wu, wv);
 }
 
-void Surf::process(Mat gray, float angle)
-{		
+void Surf::process(Mat img, float angle)
+{
 	this->angle = angle;
 	Matx14f kx = kernel(angle), ky = kernel(angle + PI_2);
 	grad = 0.0f;
 	for (int y = 0; y < H; ++y) {
 		int y0 = y > 0 ? y - 1 : y;
 		int y1 = y < H - 1 ? y + 1 : y;
-		uchar *ptr_y0 = gray.ptr<uchar>(y0);
-		uchar *ptr_y = gray.ptr<uchar>(y);
-		uchar *ptr_y1 = gray.ptr<uchar>(y1);
+		uchar *ptr_y0 = img.ptr<uchar>(y0);
+		uchar *ptr_y = img.ptr<uchar>(y);
+		uchar *ptr_y1 = img.ptr<uchar>(y1);
 		for (int x = 0; x < W; ++x) {
 			int x0 = x > 0 ? x - 1 : x;
 			int x1 = x < W - 1 ? x + 1 : x;
 			float gx = float(ptr_y[x1]) - float(ptr_y[x0]);
 			float gy = float(ptr_y1[x]) - float(ptr_y0[x]);
 			float gu = float(ptr_y1[x1]) - float(ptr_y0[x0]);
-			float gv = float(ptr_y1[x0]) - float(ptr_y0[x1]);			
+			float gv = float(ptr_y1[x0]) - float(ptr_y0[x1]);
 			Matx14f g(gx, gy, gu, gv);
 			float dx = kx.dot(g), dy = ky.dot(g);
-			float *f = grad.ptr<float>(y, x);			
+			float *f = grad.ptr<float>(y, x);
 			switch ((dx > 0.0f ? 1 : 0) + (dy > 0.0f ? 2 : 0)) {
-			case 0:				
+			case 0:
 				f[0] = dx;
 				f[2] = -dx;
 				f[4] = dy;
 				f[6] = -dy;
 				break;
-			case 1:				
+			case 1:
 				f[0] = dx;
 				f[2] = dx;
 				f[5] = dy;
 				f[7] = -dy;
 				break;
-			case 2:				
+			case 2:
 				f[1] = dx;
 				f[3] = -dx;
 				f[4] = dy;
 				f[6] = dy;
 				break;
-			case 3:				
+			case 3:
 				f[1] = dx;
 				f[3] = dx;
 				f[5] = dy;
@@ -83,7 +83,8 @@ void Surf::process(Mat gray, float angle)
 }
 
 void Surf::set_cell(float cell)
-{		
+{
+	/*
 	cell = cell * 0.5f;
 	tx[0] = -cell; ty[0] = -cell;
 	tx[1] = cell; ty[1] = -cell;
@@ -94,7 +95,8 @@ void Surf::set_cell(float cell)
 		float y = sin(angle) * tx[i] + cos(angle) * ty[i];
 		tx[i] = x;
 		ty[i] = y;
-	}	
+	}
+	*/
 	C = max(int(floor(cell)), cell_min);
 }
 
@@ -107,7 +109,7 @@ float* Surf::cell_hist(int x, int y)
 {
 	if (x < 0 || x >= W || y < 0 || y >= H)
 		return zero.ptr<float>();
-	if (flag.at<int>(y, x) != C) {		
+	if (flag.at<int>(y, x) != C) {
 		int x0 = max(x - C, 0);
 		int x1 = min(x + C + 1, W);
 		int y0 = max(y - C, 0);
@@ -124,7 +126,7 @@ float* Surf::cell_hist(int x, int y)
 		}
 		norm.at<float>(y, x) = S;
 		flag.at<int>(y, x) = C;
-	}	
+	}
 	return hist.ptr<float>(y, x);
 }
 
@@ -143,17 +145,17 @@ void Surf::descriptor(float x, float y, float *f)
 	int ixp = (int)floor(x);
 	int iyp = (int)floor(y);
 	float wx1 = x - ixp, wx0 = 1.0f - wx1;
-	float wy1 = y - iyp, wy0 = 1.0f - wy1;	
+	float wy1 = y - iyp, wy0 = 1.0f - wy1;
 	float w00 = wx0 * wy0;
 	float w01 = wx0 * wy1;
 	float w10 = wx1 * wy0;
-	float w11 = wx1 * wy1;	
+	float w11 = wx1 * wy1;
 	float *f00 = cell_hist(ixp * step, iyp * step);
 	float *f01 = cell_hist(ixp * step, (iyp + 1) * step);
 	float *f10 = cell_hist((ixp + 1) * step, iyp * step);
 	float *f11 = cell_hist((ixp + 1) * step, (iyp + 1) * step);
-	for (int i = 0; i < L; ++i) 
-		f[i] = f00[i] * w00 + f01[i] * w01 + f10[i] * w10 + f11[i] * w11;	
+	for (int i = 0; i < L; ++i)
+		f[i] = f00[i] * w00 + f01[i] * w01 + f10[i] * w10 + f11[i] * w11;
 }
 
 void Surf::gradient(float x, float y, float *f, float *dx, float *dy)
@@ -184,41 +186,39 @@ void Surf::gradient(float x, float y, float *f, float *dx, float *dy)
 }
 
 void Surf::descriptor4(float x, float y, float *f)
-{
-	for (int i = 0; i < 4; ++i)
-		descriptor(x + tx[i], y + ty[i], f + i * L);
+{	
+	descriptor(x, y, f);
 	float S = 0.0f;
-	for (int i = 0; i < L4; ++i)
+	for (int i = 0; i < L; ++i)
 		S += f[i] * f[i];
 	float iS = S < 1.0f ? 0.0f : 1.0f / sqrt(S);
-	for (int i = 0; i < L4; ++i)
-		f[i] *= iS;	
+	for (int i = 0; i < L; ++i)
+		f[i] *= iS;
 }
 
 void Surf::gradient4(float x, float y, float *f, float *dx, float *dy)
-{
-	for (int i = 0; i < 4; ++i)
-		gradient(x + tx[i], y + ty[i], f + i * L, dx + i * L, dy + i * L);
-	float S = 0.0f, Sx = 0.0f, Sy = 0.0f;	
-	for (int i = 0; i < L4; ++i) {
+{	
+	gradient(x, y, f, dx, dy);
+	float S = 0.0f, Sx = 0.0f, Sy = 0.0f;
+	for (int i = 0; i < L; ++i) {
 		S += f[i] * f[i];
 		Sx += f[i] * dx[i];
-		Sy += f[i] * dy[i];		
-	}	
+		Sy += f[i] * dy[i];
+	}
 	float iS = S < 1.0f ? 0.0f : 1.0f / sqrt(S);
 	float iSx = Sx * iS * iS * iS;
 	float iSy = Sy * iS * iS * iS;
-	for (int i = 0; i < L4; ++i) {		
+	for (int i = 0; i < L; ++i) {
 		dx[i] = dx[i] * iS - f[i] * iSx;
 		dy[i] = dy[i] * iS - f[i] * iSy;
 		f[i] *= iS;
 	}
 }
 
-Warp::Warp(Size size):
+Warp::Warp(Size size) :
 c(size.width * 0.5f, size.height * 0.5f),
 f(float(max(size.width, size.height)))
-{	
+{
 	set(Point3f(0.0f, 0.0f, 0.0f));
 	set(Matx13f(0.0f, 0.0f, 0.0f));
 }
@@ -231,7 +231,7 @@ void Warp::set(Matx13f rotate)
 	Dx = Matx33f(
 		J(0, 0), J(1, 0), J(2, 0),
 		J(0, 3), J(1, 3), J(2, 3),
-		J(0, 6), J(1, 6), J(2, 6)		
+		J(0, 6), J(1, 6), J(2, 6)
 		);
 	Dy = Matx33f(
 		J(0, 1), J(1, 1), J(2, 1),
@@ -298,7 +298,7 @@ void Warp::euler(float &roll, float &yaw, float &pitch)
 	if (abs(1 - abs(R(2, 1))) > 1.0e-7f) {
 		roll = atan2(-R(0, 1), R(1, 1));
 		yaw = atan2(-R(2, 0), R(2, 2));
-		pitch = asin(R(2, 1));		
+		pitch = asin(R(2, 1));
 	}
 	else {
 		roll = atan2(R(1, 0), R(0, 0));
@@ -307,57 +307,59 @@ void Warp::euler(float &roll, float &yaw, float &pitch)
 	}
 }
 
-MT::MT(Mat gray, Rect2f rect, ostream *os):
-	log(os),
-	image_size(gray.size()),
-	window_size(rect.size()),
-	feature(image_size),
-	warp(image_size)
+MT::MT(Mat img, Rect2f rect, ostream *os) :
+log(os),
+image_size(img.size()),
+window_size(rect.size()),
+feature(image_size),
+warp(image_size)
 {
 	warp.set(locate(rect));
 	float fine_stride = sqrt(window_size.area() / fine_n);
 	int W = int(floor(window_size.width / (2.0f * fine_stride)));
 	int H = int(floor(window_size.height / (2.0f * fine_stride)));
 	for (int y = 0; y <= 2 * H; ++y)
-	for (int x = 0; x <= 2 * W; ++x) 
+	for (int x = 0; x <= 2 * W; ++x)
 		fine_samples.push_back(Point3f((x - W) * fine_stride, (y - H) * fine_stride, 0.0f));
-	
-	feature.process(gray, 0.0f);
-	failed = trained = 0;
+
+	feature.process(img, 0.0f);
 	fine_train(warp);
 	fast_train(warp);
 	error = 0.0f;
-	roll = yaw = pitch = 0.0f;	
+	roll = yaw = pitch = 0.0f;
+	count = 0;
+}
+
+bool MT::miss()
+{
+	return count >= 10;
 }
 
 void MT::restart(Rect2f rect)
 {
+	count = 0;
 	candidates.push_back(locate(rect));
 }
 
-Rect2f MT::track(Mat gray)
-{			
+Rect2f MT::track(Mat img)
+{
 	if (log != NULL) {
 		(*log) << "roll = " << roll * 90.0f / PI_2 << endl;
 		(*log) << "yaw = " << yaw * 90.0f / PI_2 << endl;
 		(*log) << "pitch = " << pitch * 90.0f / PI_2 << endl;
 	}
-	if (candidates.empty())
-		feature.process(gray, roll);
-	else
-		feature.process(gray, 0.0f);
+	feature.process(img, roll);
 
 	candidates.push_back(warp.t);
 	candidates.push_back(fast_test(warp));
-	
+
 	Warp best_warp(image_size);
 	float best_error = 1.0f;
-	for (auto& t : candidates) {		
+	for (auto& t : candidates) {
 		if (log != NULL)
 			(*log) << "candidate " << t << " " << window(t) << endl;
 		Warp w(image_size);
-		if (candidates.size() == 2)
-			w.set(warp.r);
+		w.set(warp.r);
 		w.set(t);
 		w = fine_test(w);
 		float e = evaluate(w);
@@ -369,35 +371,26 @@ Rect2f MT::track(Mat gray)
 		if (e < best_error) {
 			best_warp = w;
 			best_error = e;
-		}		
+		}
 	}
-	candidates.clear();	
-		
+	candidates.clear();
+
 	error = best_error;
 	if (error < threshold_error) {
-		failed = 0;
+		count = 0;
 		warp = best_warp;
 		warp.euler(roll, yaw, pitch);
 		fine_train(warp);
 	}
 	else {
-		++failed;
+		++count;
 		warp.t = best_warp.t * (warp.t.z / best_warp.t.z);
 	}
 	fast_train(warp);
-	
+
 	return window(best_warp.t);
 }
 
-bool MT::miss()
-{
-	if (failed > 10) {
-		failed = 0;
-		return true;
-	}
-	else
-		return false;
-}
 
 Point3f MT::locate(Rect2f rect)
 {
@@ -421,10 +414,10 @@ Rect2f MT::window(Point3f translate)
 void MT::fast_train(Warp warp)
 {
 	Rect2f rect = window(warp.t);
-	float fast_stride = sqrt(rect.area() / fast_n);	
+	float fast_stride = sqrt(rect.area() / fast_n);
 	feature.set_cell(fast_stride);
 	int W = int(floor(rect.width * 0.5f / fast_stride));
-	int H = int(floor(rect.height * 0.5f / fast_stride));		
+	int H = int(floor(rect.height * 0.5f / fast_stride));
 	int ox = int(round(rect.width * 0.5f));
 	int oy = int(round(rect.height * 0.5f));
 	int stride = int(round(fast_stride));
@@ -432,11 +425,11 @@ void MT::fast_train(Warp warp)
 	for (int y = 0; y <= 2 * H; ++y)
 	for (int x = 0; x <= 2 * W; ++x)
 		fast_samples.push_back(Point(ox + (x - W) * stride, oy + (y - H) * stride));
-	
+
 	fast_model.create(fast_samples.size(), L, CV_32FC1);
 	int x = int(round(rect.x));
 	int y = int(round(rect.y));
-	for (int i = 0; i < fast_samples.size(); ++i) {		
+	for (int i = 0; i < fast_samples.size(); ++i) {
 		int tx = x + fast_samples[i].x;
 		int ty = y + fast_samples[i].y;
 		float *dst = fast_model.ptr<float>(i);
@@ -448,31 +441,27 @@ void MT::fast_train(Warp warp)
 void MT::fine_train(Warp warp)
 {
 	Rect2f rect = window(warp.t);
-	float fine_cell = sqrt(rect.area() / cell_n);	
+	float fine_cell = sqrt(rect.area() / cell_n);
 	feature.set_cell(fine_cell);
 	feature.set_step(1);
 
-	Mat model(fine_samples.size(), L4, CV_32FC1);
+	Mat model(fine_samples.size(), L, CV_32FC1);
 	for (int i = 0; i < fine_samples.size(); ++i) {
 		Point2f p = warp.transform2(fine_samples[i]);
 		feature.descriptor4(p.x, p.y, model.ptr<float>(i));
-	}	
-	if (fine_model.empty()) {
-		trained = 1;
+	}
+	if (fine_model.empty())
 		fine_model = model;
-	}
-	else {
-		++trained;
-		fine_model = (float(trained - 1) / trained) * fine_model + (1.0f / trained) * model;
-	}
+	else
+		fine_model = (1.0f - interp_factor) * fine_model + interp_factor * model;
 }
 
 Point3f MT::fast_test(Warp warp)
 {
 	Rect2f rect = window(warp.t);
 	float fast_stride = sqrt(rect.area() / fast_n);
-	feature.set_cell(fast_stride);	
-	Rect2f region = window(warp.t / (1.0f + padding));	
+	feature.set_cell(fast_stride);
+	Rect2f region = window(warp.t / (1.0f + padding));
 	float minminx = -rect.width * 0.5f;
 	float minminy = -rect.height * 0.5f;
 	float maxmaxx = image_size.width + rect.width * 0.5f;
@@ -481,11 +470,11 @@ Point3f MT::fast_test(Warp warp)
 	int miny = int(round(max(region.y, minminy)));
 	int maxx = int(round(min(region.x + region.width, maxmaxx) - rect.width));
 	int maxy = int(round(min(region.y + region.height, maxmaxy) - rect.height));
-	
+
 	float best_score = 0.0f;
 	Point3f best_translate = warp.t;
 	for (int y = miny; y <= maxy; y += fast_step)
-	for (int x = minx; x <= maxx; x += fast_step) {	
+	for (int x = minx; x <= maxx; x += fast_step) {
 		float S = 0.0f, score = 0.0f;
 		for (int i = 0; i < fast_samples.size(); ++i) {
 			int tx = x + fast_samples[i].x;
@@ -506,11 +495,11 @@ Point3f MT::fast_test(Warp warp)
 }
 
 Warp MT::fine_test(Warp warp)
-{	
+{
 	Rect2f rect = window(warp.t);
 	float fine_cell = sqrt(rect.area() / cell_n);
 	feature.set_cell(fine_cell);
-	for (auto fine_step : fine_steps) {		
+	for (auto fine_step : fine_steps) {
 		if (fine_step > 2.0f * fine_cell)
 			continue;
 		feature.set_step(fine_step);
@@ -527,7 +516,7 @@ float MT::sigmoid(float x)
 }
 
 Warp MT::Lucas_Kanade(Warp warp)
-{				
+{
 	for (int iter = 0; iter < max_iteration; ++iter) {
 		Matx61f G;
 		Matx<float, 6, 6> H;
@@ -535,11 +524,11 @@ Warp MT::Lucas_Kanade(Warp warp)
 		H = 0.0f;
 		float E = 0.0f;
 		for (int i = 0; i < fine_samples.size(); ++i) {
-			Matx<float, L4, 1> T(fine_model.ptr<float>(i)), F;
-			Matx<float, 2, L4> dF;
+			Matx<float, L, 1> T(fine_model.ptr<float>(i)), F;
+			Matx<float, 2, L> dF;
 			Matx<float, 2, 6> dW = warp.gradient(fine_samples[i]);
 			Point2f p = warp.transform2(fine_samples[i]);
-			feature.gradient4(p.x, p.y, F.val, dF.val, dF.val + L4);
+			feature.gradient4(p.x, p.y, F.val, dF.val, dF.val + L);
 			T -= F;
 			float e = sigmoid(T.dot(T));
 			E += e;
@@ -547,9 +536,11 @@ Warp MT::Lucas_Kanade(Warp warp)
 			G += w * (dW.t() * (dF * T));
 			H += w * (dW.t() * (dF * dF.t()) * dW);
 		}
+
+
 		E = E / fine_samples.size();
 		if (log != NULL)
-			(*log) << "\terror in iteration " << iter << " = " << E << endl;		
+			(*log) << "\terror in iteration " << iter << " = " << E << endl;
 		Matx61f D;
 		solve(H, G, D, DECOMP_SVD);
 		warp.steepest(D);
@@ -565,10 +556,10 @@ float MT::evaluate(Warp warp)
 	float fine_cell = sqrt(rect.area() / cell_n);
 	feature.set_cell(fine_cell);
 	feature.set_step(1);
-		
+
 	float E = 0.0f;
 	for (int i = 0; i < fine_samples.size(); ++i) {
-		Matx<float, L4, 1> T(fine_model.ptr<float>(i)), I;
+		Matx<float, L, 1> T(fine_model.ptr<float>(i)), I;
 		Point2f p = warp.transform2(fine_samples[i]);
 		feature.descriptor4(p.x, p.y, I.val);
 		T -= I;

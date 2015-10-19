@@ -1,5 +1,8 @@
 /bin/
 /obj/
 /benchmark/
+/unittest/
 *.opensdf
 *.suo
+*.sdf
+*.exe
