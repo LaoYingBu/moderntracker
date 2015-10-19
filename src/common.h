@@ -32,7 +32,7 @@ using namespace Json;
 #ifdef _DEBUG
 const int nThreads = 1;
 #else
-const int nThreads = 3;
+const int nThreads = 2;
 #endif // _DEBUG
 
 const string dir_benchmark = "D:/face tracking/benchmark/";
