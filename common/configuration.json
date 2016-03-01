@@ -1,0 +1,37 @@
+{
+	"nThreads" : 3,			
+	"resolution" : 
+	{
+		"width" : 640,
+		"height" : 360
+	},	
+	"detector" :
+	{
+		"model" : "haarcascade_frontalface_default.xml",
+		"interval" : 10,
+		"frequence" : 30		
+	},
+	
+	
+	
+}
+
+1. components
+easy to change:
+	# of feature points, cell of feature points	
+	# of LK iteration
+		set of different steps
+		terminal condition	
+	frequency of re-detection
+		the threshold
+		the interval between consecutive re-detections
+		the detector
+	coarse search
+		the threshold
+		the power (the area, the step and # of matching points)
+hard to change:	
+	parameter of SURF
+		4bin or 8bin
+	feature type
+	motion model type
+	optimization algorithm type

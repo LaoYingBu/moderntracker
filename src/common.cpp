@@ -2,8 +2,13 @@
 
 void mkdir(string dir)
 {
+#ifdef __linux__
+	if (access(dir.c_str(), F_OK) == -1)
+		mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+#else
 	if (_access(dir.c_str(), 0) == -1)
 		_mkdir(dir.c_str());
+#endif // __linux__
 }
 
 mutex M_detect;

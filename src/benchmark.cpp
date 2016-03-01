@@ -54,7 +54,7 @@ namespace benchmark
 				log << endl << "Frame " << i << " ";
 				log << (seq->getClear(i) ? "Clear" : "Unclear") << endl;
 				Mat gray = seq->getImage(i);
-				Rect2f gt = seq->getRect(i), result;				
+				Rect2f gt = seq->getRect(i), result;
 				vector<Rect2f> detections;
 
 				if (fart == NULL) {

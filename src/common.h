@@ -19,8 +19,13 @@
 #include <cstring>
 using namespace std;
 
+#ifdef __linux__
+#include <unistd.h>
+#include <sys/stat.h> 
+#else
 #include <io.h>
 #include <direct.h>
+#endif // __linux__
 
 #include <opencv2\world.hpp>
 #include <opencv2\highgui.hpp>
