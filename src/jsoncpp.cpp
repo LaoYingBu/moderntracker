@@ -3964,8 +3964,12 @@ Value& Path::make(Value& root) const {
 #pragma warning(disable : 4996)
 #endif
 
-#if defined(__sun) && defined(__SVR4) //Solaris
+#if defined(__sun) && defined(__SVR4) // Solaris
 #include <ieeefp.h>
+#define isfinite finite
+#endif
+
+#if defined(__linux) // Linux
 #define isfinite finite
 #endif
 

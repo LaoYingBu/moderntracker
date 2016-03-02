@@ -21,13 +21,13 @@
     <ClCompile Include="src\common.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\fartracker.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\jsoncpp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\exprtracker.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -35,10 +35,10 @@
     <ClInclude Include="src\common.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\fartracker.h">
+    <ClInclude Include="src\json.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\json.h">
+    <ClInclude Include="src\exprtracker.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

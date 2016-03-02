@@ -11,25 +11,6 @@ void mkdir(string dir)
 #endif // __linux__
 }
 
-mutex M_detect;
-CascadeClassifier detector(path_detector);
-
-void detect(Mat gray, vector<Rect2f> &rects)
-{
-	M_detect.lock();
-	vector<Rect> faces;
-	detector.detectMultiScale(gray, faces);
-	rects.clear();
-	for (auto& r : faces) {
-		float w = 0.78f * r.width;
-		float h = 0.78f * r.height;
-		float x = r.x + r.width * 0.5f - w * 0.5f;
-		float y = r.y + r.height * 0.55f - h * 0.5f;
-		rects.push_back(Rect2f(x, y, w, h));
-	}
-	M_detect.unlock();
-}
-
 float overlap(Rect2f a, Rect2f b)
 {
 	if (a.width <= 0.0f || a.height <= 0.0f || a.area() <= 0.0f)
@@ -40,17 +21,111 @@ float overlap(Rect2f a, Rect2f b)
 	return s / (a.area() + b.area() - s);
 }
 
-mutex M_sequence;
-Reader reader;
-Value root;
-vector<int> perm;
-vector<int>::iterator perm_iter;
+Expr expr;
+
+Expr::Expr()
+{
+	dir_benchmark = "D:/face tracking/benchmark/";
+	dir_data = dir_benchmark + "data/";
+	dir_image = dir_benchmark + "image/";
+	path_groundtruth = dir_data + "groundtruth.json";
+
+	path_log = "./benchmark/log.txt";
+	path_result = dir_data + "mt.json";
+	dir_detail = "./benchmark/";
+
+	nThreads = 3;
+	resolution_width = 640;
+	resolution_height = 480;
+
+	detector_model = "./common/haarcascade_frontalface_alt.xml";
+	detector_threshold = 0.4f;
+	detector_interval = 10;
+	detector_frequence = 30;
+
+	fast_n = 25;
+	fast_step = 2;
+	fast_padding = 1.6f;
+	fast_threshold = 0.4f;
+
+	fine_n = 600;
+	fine_steps[0] = 27;
+	fine_steps[1] = 9;
+	fine_steps[2] = 3;
+	fine_steps[3] = 1;
+	fine_threshold = 0.4f;
+
+	cell_min = 2;
+	cell_n = 150;
+
+	iteration_max = 9;
+	iteration_translate_eps = 0.1f;
+	iteration_error_eps = 0.001f;
+
+	sigmoid_factor = 7.141f;
+	sigmoid_bias = 0.482f;	
+}
+
+void Expr::load(string path_configuration)
+{
+	Reader reader;
+	Value root;
+	ifstream fin(path_configuration);
+	reader.parse(fin, root);
+	fin.close();
+
+	dir_benchmark = root["dir_benchmark"].asString();
+	dir_data = dir_benchmark + "data/";
+	dir_image = dir_benchmark + "image/";
+	path_groundtruth = dir_data + "groundtruth.json";
+
+	path_log = root["path_log"].asString();
+	path_result = root["path_result"].asString();
+	dir_detail = root["dir_detail"].asString();
+
+	nThreads = root["nThreads"].asInt();
+	resolution_width = root["resolution"]["width"].asInt();
+	resolution_height = root["resolution"]["height"].asInt();
+
+	detector_model = root["detector"]["model"].asString();		
+	detector_threshold = root["detector"]["threshold"].asFloat();
+	detector_interval = root["detector"]["interval"].asInt();
+	detector_frequence = root["detector"]["frequence"].asInt();
+
+	fast_n = root["fast"]["n"].asInt();
+	fast_step = root["fast"]["step"].asInt();
+	fast_padding = root["fast"]["padding"].asFloat();
+	fast_threshold = root["fast"]["threshold"].asFloat();
+
+	fine_n = root["fine"]["n"].asInt();
+	fine_steps[0] = root["fine"]["steps"][0].asInt();
+	fine_steps[1] = root["fine"]["steps"][1].asInt();
+	fine_steps[2] = root["fine"]["steps"][2].asInt();
+	fine_steps[3] = root["fine"]["steps"][3].asInt();
+	fine_threshold = root["fine"]["threshold"].asFloat();
+
+	cell_min = root["cell"]["min"].asInt();;
+	cell_n = root["cell"]["n"].asInt();;
+
+	iteration_max = root["iteration"]["max"].asInt();
+	iteration_translate_eps = root["iteration"]["translate_eps"].asFloat();
+	iteration_error_eps = root["iteration"]["error_eps"].asFloat();
+
+	sigmoid_factor = root["sigmoid"]["factor"].asFloat();
+	sigmoid_bias = root["sigmoid"]["bias"].asFloat();
+}
+
+mutex Sequence::M_sequence;
+Reader Sequence::reader;
+Value Sequence::root;
+vector<int> Sequence::perm;
+vector<int>::iterator Sequence::perm_iter;
 
 Sequence* Sequence::getSeq()
 {
 	M_sequence.lock();
 	if (root.empty()) {
-		ifstream fin(path_groundtruth);
+		ifstream fin(expr.path_groundtruth);
 		reader.parse(fin, root);
 		fin.close();
 		perm.resize(root.size());
@@ -61,12 +136,12 @@ Sequence* Sequence::getSeq()
 		perm_iter = perm.begin();
 	}
 	Sequence *ret = NULL;
-	if (perm_iter != perm.end()) {		
+	if (perm_iter != perm.end()) {
 		ret = new Sequence(root[*perm_iter]);
 		++perm_iter;
 	}
 	else {		
-		ofstream fout(path_result);
+		ofstream fout(expr.path_result);
 		fout << StyledWriter().write(root) << endl;
 		fout.close();
 	}
@@ -98,8 +173,11 @@ Sequence::Sequence(Value &_V) : V(_V)
 	width = V["width"].asInt();
 	height = V["height"].asInt();
 	type = V["type"].asString();
-	Value &R = V["rects"];
-	
+	image_scale = sqrt(float(expr.resolution_width * expr.resolution_height) / float(width * height));
+	if (image_scale > 1.0f)
+		image_scale = 1.0f;
+
+	Value &R = V["rects"];	
 	for (auto &r : R) {
 		int x = r[0].asInt() - 1;
 		int y = r[1].asInt() - 1;
@@ -145,7 +223,7 @@ void Sequence::loadImage()
 		return;	
 	for (int i = start_frame; i <= end_frame; ++i) {
 		stringstream ss;
-		ss << dir_image << name << "/";
+		ss << expr.dir_image << name << "/";
 		ss.width(4);
 		ss.fill('0');
 		ss << i << ".jpg";

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef common_h
+#define common_h
 
 #define _CRT_SECURE_NO_WARNINGS
 
@@ -19,13 +20,13 @@
 #include <cstring>
 using namespace std;
 
-#ifdef __linux__
+#ifdef __linux
 #include <unistd.h>
 #include <sys/stat.h> 
 #else
 #include <io.h>
 #include <direct.h>
-#endif // __linux__
+#endif /* __linux */
 
 #include <opencv2\world.hpp>
 #include <opencv2\highgui.hpp>
@@ -33,36 +34,90 @@ using namespace std;
 #include <opencv2\objdetect.hpp>
 using namespace cv;
 
+#ifndef Recf2f
+#define Rect2f Rect_<float>
+#endif  /* Rect2f */
+
 #include "json.h"
 using namespace Json;
 
-const string dir_benchmark = "D:/face tracking/benchmark/";
-const string dir_data = dir_benchmark + "data/";
-const string dir_image = dir_benchmark + "image/";
-const string dir_common = "./common/";
-const string path_detector = dir_common + "haarcascade_frontalface_default.xml";
-
-#ifdef _DEBUG
-const int nThreads = 1;
-const string path_groundtruth = dir_common + "debug.json";
-const string path_result = dir_common + "mt.json";
-const float image_scale = 0.25f;
-#else
-const int nThreads = 3;
-const string path_groundtruth = dir_data + "groundtruth.json";
-const string path_result = dir_data + "mt.json";
-const float image_scale = 0.5f;
-#endif // _DEBUG
-
 void mkdir(string dir);
-void detect(Mat gray, vector<Rect2f> &rects);
 float overlap(Rect2f a, Rect2f b);
+
+class Expr
+{
+public:
+	Expr();
+	void load(string path_configuration);
+
+public:	
+	//make sure /data and /image are under this directory
+	string dir_benchmark;
+	string dir_data, dir_image, path_groundtruth;
+
+	//path_log contatins the global statistics information	
+	string path_log;
+	//path_result contains the final rectangle output
+	string path_result;
+	//dir_detail contatins the log for each sequence, use empty string to discard
+	string dir_detail;
+
+	//number of threads, do not exceed the number of cores	
+	int nThreads;
+	//width and height can exchange, suggest 1280x720, 640x360 and 320x180
+	int resolution_width, resolution_height;
+
+	//only support Opencv pre-trained model		
+	string detector_model;
+	//The tracker call the detector if the average error over the last interval frames is lower than threshold	
+	//If nothing detected, it will call the detector again after frequence frames
+	float detector_threshold;
+	int detector_interval, detector_frequence;	
+
+	//fast template contatins about fast_n features	
+	int fast_n;
+	//the fast template moves at fast_step pixels
+	int fast_step;
+	//the search area of fast template is (1 + padding) * area_of_face
+	float fast_padding;
+	//when error is lower than threshold, carry out fast search
+	float fast_threshold;
+
+	//fine template contatins about fine_n features
+	int fine_n;	
+	//steps of multi-scale Lucas-Kanade, in decreasing order
+	int fine_steps[4];
+	//if the error is lower than threshold, update the fine model
+	float fine_threshold;
+
+	//each SURF feature is 4 cells, each cell is (2*cell_min)x(2*cell_min)	
+	int cell_min;
+	//each cell covers (area_of_face / cell_n) pixels
+	int cell_n;
+
+	//number of iteration of each scale
+	int iteration_max;
+	//termination condition of iteration
+	float iteration_translate_eps, iteration_error_eps;
+
+	//parameters of sigmoid
+	float sigmoid_factor, sigmoid_bias;		
+};
+
+extern Expr expr;
 
 class Sequence
 {
 public:
+	static mutex M_sequence;
+	static Reader reader;
+	static Value root;
+	static vector<int> perm;
+	static vector<int>::iterator perm_iter;
+
+public:
 	static Sequence* getSeq();
-	static void setSeq(Sequence* seq);
+	static void setSeq(Sequence* seq);	
 
 public:
 	Sequence(Value &_V);
@@ -83,6 +138,7 @@ private:
 	Value &V;
 	string name;
 	int start_frame, end_frame, width, height;
+	float image_scale;
 	string type;
 	vector<Mat> grays;
 	vector<Rect> rects;
@@ -110,3 +166,5 @@ private:
 
 ostream& operator<<(ostream& cout, const Statistics &st);
 Statistics& operator+=(Statistics& st, const Statistics &opt);
+
+#endif /* common_h */

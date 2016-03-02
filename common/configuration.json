@@ -1,37 +1,55 @@
 {
+	"dir_benchmark" : "D:/face tracking/benchmark/",
+	"path_log" : "./benchmark/log.txt",
+	"path_result" : "./benchmark/mt.json",
+	"dir_detail": "./benchmark/",
+		
 	"nThreads" : 3,			
 	"resolution" : 
 	{
 		"width" : 640,
 		"height" : 360
 	},	
+	
 	"detector" :
 	{
-		"model" : "haarcascade_frontalface_default.xml",
+		"model" : "./common/haarcascade_frontalface_default.xml",
+		"threshold" : 0.4,
 		"interval" : 10,
-		"frequence" : 30		
+		"frequence" : 30
 	},
 	
+	"fast":
+	{
+		"n" : 25,
+		"step" : 2,
+		"padding" : 1.6,
+		"threshold" : 0.4
+	},
 	
+	"fine":
+	{
+		"n" : 600,
+		"steps" : [27, 9, 3, 1],
+		"threshold" : 0.4
+	},
 	
+	"cell":
+	{
+		"min" : 2,
+		"n" : 150
+	},
+	
+	"iteration":
+	{
+		"max" : 9,
+		"translate_eps" : 0.1,
+		"error_eps" : 0.001
+	},
+	
+	"sigmoid":
+	{
+		"factor" : 7.141,
+		"bias" : 0.482
+	}
 }
-
-1. components
-easy to change:
-	# of feature points, cell of feature points	
-	# of LK iteration
-		set of different steps
-		terminal condition	
-	frequency of re-detection
-		the threshold
-		the interval between consecutive re-detections
-		the detector
-	coarse search
-		the threshold
-		the power (the area, the step and # of matching points)
-hard to change:	
-	parameter of SURF
-		4bin or 8bin
-	feature type
-	motion model type
-	optimization algorithm type

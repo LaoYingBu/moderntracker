@@ -1,63 +1,4 @@
-#include "fartracker.h"
-
-// C interface
-
-far_tracker_t far_init(const unsigned char *gray, int width, int height, far_rect_t rect)
-{
-	return new FARTracker(gray, width, height, rect, NULL);//&cerr);
-}
-
-far_rect_t far_track(far_tracker_t tracker, const unsigned char *gray)
-{
-	assert(tracker != NULL);
-	FARTracker *t = static_cast<FARTracker*>(tracker);
-	return t->track(gray);
-}
-
-far_rect_t far_retrack(far_tracker_t tracker, const unsigned char *gray, const far_rect_t rects[], int n_rects)
-{
-	assert(tracker != NULL);
-	FARTracker *t = static_cast<FARTracker*>(tracker);
-	return t->retrack(gray, vector<far_rect_t>(rects, rects + n_rects));
-}
-
-void far_transform(far_tracker_t tracker, far_rect_t start_rect, float *x, float *y)
-{
-	assert(tracker != NULL);
-	FARTracker *t = static_cast<FARTracker*>(tracker);
-	assert(x != NULL && y != NULL);
-	Vector3f p3(*x - (start_rect.x + start_rect.width * 0.5f), *y - (start_rect.y + start_rect.height * 0.5f), 0.0f);
-	Vector2f p2 = t->warp.transform2(p3);
-	*x = p2.x();
-	*y = p2.y();
-}
-
-void far_info(far_tracker_t tracker, float *error, float *roll, float *yaw, float *pitch)
-{
-	assert(tracker != NULL);
-	FARTracker *t = static_cast<FARTracker*>(tracker);
-	assert(error != NULL && roll != NULL && yaw != NULL && pitch != NULL);
-	*error = t->error;
-	t->warp.euler(*roll, *yaw, *pitch);
-	*roll *= 90.0f / PI_2;
-	*yaw *= 90.0f / PI_2;
-	*pitch *= 90.0f / PI_2;
-}
-
-bool far_check(far_tracker_t tracker)
-{
-	assert(tracker != NULL);
-	FARTracker *t = static_cast<FARTracker*>(tracker);
-	return t->check();
-}
-
-void far_release(far_tracker_t tracker)
-{
-	if (tracker != NULL) {
-		FARTracker *t = static_cast<FARTracker*>(tracker);
-		delete t;
-	}
-}
+#include "exprtracker.h"
 
 // C++ implementation
 
@@ -210,7 +151,7 @@ void Surf::set_cell(float cell)
 		X[i] = x;
 		Y[i] = y;
 	}
-	C = max(int(floor(cell)), cell_min);
+	C = max(int(floor(cell)), expr.cell_min);
 }
 
 void Surf::set_step(int step)
@@ -454,7 +395,7 @@ void Warp::euler(float &roll, float &yaw, float &pitch)
 	}
 }
 
-FARTracker::FARTracker(const unsigned char *gray, int width, int height, far_rect_t rect, ostream *os) :
+ExprTracker::ExprTracker(const unsigned char *gray, int width, int height, far_rect_t rect, ostream *os) :
 image_width(width), image_height(height),
 window_width(rect.width), window_height(rect.height),
 warp(width, height),
@@ -462,7 +403,7 @@ feature(width, height),
 log(os)
 {
 	warp.sett(locate(rect));
-	float fine_stride = sqrt(window_width * window_height / fine_n);
+	float fine_stride = sqrt(window_width * window_height / expr.fine_n);
 	int W = int(floor(window_width / (2.0f * fine_stride)));
 	int H = int(floor(window_height / (2.0f * fine_stride)));
 	for (int y = 0; y <= 2 * H; ++y)
@@ -478,7 +419,7 @@ log(os)
 	roll = yaw = pitch = 0.0f;
 }
 
-far_rect_t FARTracker::track(const unsigned char *gray)
+far_rect_t ExprTracker::track(const unsigned char *gray)
 {
 	if (log != NULL) {
 		(*log) << "roll = " << roll * 90.0f / PI_2 << endl;
@@ -492,7 +433,7 @@ far_rect_t FARTracker::track(const unsigned char *gray)
 		(*log) << "track at " << w.t.transpose() << " " << window(w.t) << endl;
 	w = fine_test(w);
 	float e = evaluate(w);
-	if (e > threshold_error) {
+	if (e > expr.fast_threshold) {
 		Warp w2 = warp;
 		w2.sett(fast_test(warp));
 		if (log != NULL)
@@ -509,7 +450,7 @@ far_rect_t FARTracker::track(const unsigned char *gray)
 	return window(w.t);
 }
 
-far_rect_t FARTracker::retrack(const unsigned char *gray, const vector<far_rect_t> &detections)
+far_rect_t ExprTracker::retrack(const unsigned char *gray, const vector<far_rect_t> &detections)
 {
 	if (log != NULL) {
 		(*log) << "roll = " << roll * 90.0f / PI_2 << endl;
@@ -553,15 +494,15 @@ far_rect_t FARTracker::retrack(const unsigned char *gray, const vector<far_rect_
 	return window(w.t);
 }
 
-bool FARTracker::check()
+bool ExprTracker::check()
 {
 	float s = 0.0f;
 	for (auto e : fine_errors)
 		s += e;
-	return s / fine_errors.size() < threshold_error;
+	return s / fine_errors.size() < expr.detector_threshold;
 }
 
-Vector3f FARTracker::locate(far_rect_t rect)
+Vector3f ExprTracker::locate(far_rect_t rect)
 {
 	float scale = sqrt(window_width * window_height / rectArea(rect));
 	float x = rect.x + rect.width * 0.5f - warp.c.x();
@@ -569,7 +510,7 @@ Vector3f FARTracker::locate(far_rect_t rect)
 	return scale * Vector3f(x, y, warp.f);
 }
 
-far_rect_t FARTracker::window(Vector3f translate)
+far_rect_t ExprTracker::window(Vector3f translate)
 {
 	Vector2f center = warp.project(translate);
 	float scale = warp.f / translate.z();
@@ -581,7 +522,7 @@ far_rect_t FARTracker::window(Vector3f translate)
 	return ret;
 }
 
-void FARTracker::update(Warp w, float e)
+void ExprTracker::update(Warp w, float e)
 {
 	if (log != NULL) {
 		(*log) << "final translation = " << w.t.transpose() << " " << window(w.t) << endl;
@@ -589,7 +530,7 @@ void FARTracker::update(Warp w, float e)
 		(*log) << "final error = " << e << endl;
 	}
 	error = e;
-	if (e < threshold_error) {
+	if (e < expr.fine_threshold) {
 		warp = w;
 		warp.euler(roll, yaw, pitch);
 		fine_train(warp);
@@ -598,14 +539,14 @@ void FARTracker::update(Warp w, float e)
 		warp.t = w.t * (warp.t.z() / w.t.z());
 	fast_train(warp);
 	fine_errors.push_back(e);
-	while (fine_errors.size() > 10)
+	while (fine_errors.size() > expr.detector_interval)
 		fine_errors.pop_front();
 }
 
-void FARTracker::fast_train(Warp warp)
+void ExprTracker::fast_train(Warp warp)
 {
 	far_rect_t rect = window(warp.t);
-	float fast_stride = sqrt(rectArea(rect) / fast_n);
+	float fast_stride = sqrt(rectArea(rect) / expr.fast_n);
 	feature.set_cell(fast_stride);
 	int W = int(rect.width * 0.5f / fast_stride);
 	int H = int(rect.height * 0.5f / fast_stride);
@@ -628,10 +569,10 @@ void FARTracker::fast_train(Warp warp)
 
 }
 
-void FARTracker::fine_train(Warp warp)
+void ExprTracker::fine_train(Warp warp)
 {
 	far_rect_t rect = window(warp.t);
-	float fine_cell = sqrt(rectArea(rect) / cell_n);
+	float fine_cell = sqrt(rectArea(rect) / expr.cell_n);
 	feature.set_cell(fine_cell);
 	feature.set_step(1);
 
@@ -650,12 +591,12 @@ void FARTracker::fine_train(Warp warp)
 	}
 }
 
-Vector3f FARTracker::fast_test(Warp warp)
+Vector3f ExprTracker::fast_test(Warp warp)
 {
 	far_rect_t rect = window(warp.t);
-	float fast_stride = sqrt(rectArea(rect) / fast_n);
+	float fast_stride = sqrt(rectArea(rect) / expr.fast_n);
 	feature.set_cell(fast_stride);
-	far_rect_t region = window(warp.t / (1.0f + padding));
+	far_rect_t region = window(warp.t / (1.0f + expr.fast_padding));
 	float minminx = -rect.width * 0.5f;
 	float minminy = -rect.height * 0.5f;
 	float maxmaxx = image_width + rect.width * 0.5f;
@@ -668,8 +609,8 @@ Vector3f FARTracker::fast_test(Warp warp)
 	float best_score = 0.0f;
 	Vector3f best_translate = warp.t;
 	MatrixXf model(8, fast_samples.size());
-	for (int y = miny; y <= maxy; y += fast_step)
-	for (int x = minx; x <= maxx; x += fast_step) {
+	for (int y = miny; y <= maxy; y += expr.fast_step)
+	for (int x = minx; x <= maxx; x += expr.fast_step) {
 		for (int i = 0; i < fast_samples.size(); ++i) {
 			int tx = x + fast_samples[i].x();
 			int ty = y + fast_samples[i].y();
@@ -688,12 +629,12 @@ Vector3f FARTracker::fast_test(Warp warp)
 	return best_translate;
 }
 
-Warp FARTracker::fine_test(Warp warp)
+Warp ExprTracker::fine_test(Warp warp)
 {
 	far_rect_t rect = window(warp.t);
-	float fine_cell = sqrt(rectArea(rect) / cell_n);
+	float fine_cell = sqrt(rectArea(rect) / expr.cell_n);
 	feature.set_cell(fine_cell);
-	for (auto fine_step : fine_steps) {
+	for (auto fine_step : expr.fine_steps) {
 		if (fine_step > 2.0f * fine_cell)
 			continue;
 		feature.set_step(fine_step);
@@ -704,12 +645,12 @@ Warp FARTracker::fine_test(Warp warp)
 	return warp;
 }
 
-float FARTracker::sigmoid(float x)
+float ExprTracker::sigmoid(float x)
 {
-	return 1.0f / (1.0f + exp(-sigmoid_factor * (x - sigmoid_bias)));
+	return 1.0f / (1.0f + exp(-expr.sigmoid_factor * (x - expr.sigmoid_bias)));
 }
 
-void FARTracker::hessian(Matrix<float, 6, 6> &H, float w, const Matrix<float, 2, 6> &dW, const Matrix<float, 32, 2> &dF)
+void ExprTracker::hessian(Matrix<float, 6, 6> &H, float w, const Matrix<float, 2, 6> &dW, const Matrix<float, 32, 2> &dF)
 {
 	float F00 = w * dF.col(0).squaredNorm();
 	float F11 = w * dF.col(1).squaredNorm();
@@ -749,10 +690,10 @@ void FARTracker::hessian(Matrix<float, 6, 6> &H, float w, const Matrix<float, 2,
 	H(5, 5) += x5 * dW(0, 5) + y5 * dW(1, 5);
 }
 
-Warp FARTracker::Lucas_Kanade(Warp warp)
+Warp ExprTracker::Lucas_Kanade(Warp warp)
 {
 	float last_E = 1.0f;
-	for (int iter = 0; iter < max_iteration; ++iter) {
+	for (int iter = 0; iter < expr.iteration_max; ++iter) {
 		Matrix<float, 6, 1> G = Matrix<float, 6, 1>::Constant(0.0f);
 		Matrix<float, 6, 6> H = Matrix<float, 6, 6>::Constant(0.0f);
 		float E = 0.0f;
@@ -764,7 +705,7 @@ Warp FARTracker::Lucas_Kanade(Warp warp)
 			feature.gradient4(p.x(), p.y(), F.data(), dF.col(0).data(), dF.col(1).data());
 			F -= fine_model.col(i);
 			float e = sigmoid(F.squaredNorm());
-			float w = sigmoid_factor * e * (1.0f - e);
+			float w = expr.sigmoid_factor * e * (1.0f - e);
 			G += w * (dW.transpose() * (dF.transpose() * -F));
 			//H.triangularView<Upper> += w * (dW.transpose() * (dF.transpose() * dF) * dW);
 			hessian(H, w, dW, dF);
@@ -776,7 +717,7 @@ Warp FARTracker::Lucas_Kanade(Warp warp)
 		warp.steepest(D);
 		if (log != NULL)
 			(*log) << E << " ";
-		if (iter > 1 && D.segment<3>(3).squaredNorm() < translate_eps && last_E - E < error_eps)
+		if (iter > 1 && D.segment<3>(3).squaredNorm() < expr.iteration_translate_eps && last_E - E < expr.iteration_error_eps)
 			break;
 		last_E = E;
 	}
@@ -785,10 +726,10 @@ Warp FARTracker::Lucas_Kanade(Warp warp)
 	return warp;
 }
 
-float FARTracker::evaluate(Warp warp)
+float ExprTracker::evaluate(Warp warp)
 {
 	far_rect_t rect = window(warp.t);
-	float fine_cell = sqrt(rectArea(rect) / cell_n);
+	float fine_cell = sqrt(rectArea(rect) / expr.cell_n);
 	feature.set_cell(fine_cell);
 	feature.set_step(1);
 

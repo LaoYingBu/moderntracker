@@ -1,5 +1,5 @@
-#ifndef fartracker_h
-#define fartracker_h
+#ifndef exprtracker_h
+#define exprtracker_h
 
 // C interface
 
@@ -10,27 +10,7 @@ typedef struct far_rect_t {
 	float height;
 } far_rect_t;
 
-typedef void* far_tracker_t;
-
-#ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
-
-	far_tracker_t far_init(const unsigned char *gray, int width, int height, far_rect_t rect);
-	far_rect_t far_track(far_tracker_t tracker, const unsigned char *gray);
-	far_rect_t far_retrack(far_tracker_t tracker, const unsigned char *gray, const far_rect_t rects[], int n_rects);
-	void far_transform(far_tracker_t tracker, far_rect_t start_rect, float *x, float *y);
-	void far_info(far_tracker_t tracker, float *error, float *roll, float *yaw, float *pitch);
-	bool far_check(far_tracker_t tracker);
-	void far_release(far_tracker_t tracker);
-
-#ifdef __cplusplus
-}
-#endif /* __cplusplus */
-
 // C++ implementation
-
-#ifdef __cplusplus
 
 #include <iostream>
 #include <vector>
@@ -43,21 +23,8 @@ using namespace std;
 #include "Eigen/Dense"
 using namespace Eigen;
 
+#include "common.h"
 const float PI_2 = acos(-1.0f) * 0.5f;
-
-const int cell_min = 2;
-const int fast_n = 25;
-const int fast_step = 2;
-const int fine_n = 600;
-const int cell_n = 150;
-const int fine_steps[] = { 27, 9, 3, 1 };
-const int max_iteration = 9;
-const float padding = 1.6f;
-const float sigmoid_factor = 7.141f;
-const float sigmoid_bias = 0.482f;
-const float translate_eps = 0.1f;
-const float error_eps = 0.001f;
-const float threshold_error = 0.4f;
 
 typedef Matrix<float, 8, 1> Vector8f;
 typedef Matrix<float, 32, 1> Vector32f;
@@ -181,10 +148,10 @@ private:
 	Matrix3f R, Dx, Dy, Dz;
 };
 
-class FARTracker
+class ExprTracker
 {
 public:
-	FARTracker(const unsigned char *gray, int width, int height, far_rect_t rect, ostream *os = NULL);
+	ExprTracker(const unsigned char *gray, int width, int height, far_rect_t rect, ostream *os = NULL);
 	far_rect_t track(const unsigned char *gray);
 	far_rect_t retrack(const unsigned char *gray, const vector<far_rect_t> &detections);
 	bool check();
@@ -221,6 +188,4 @@ private:
 	int N;
 };
 
-#endif /* __cplusplus */
-
-#endif /* fartracker_h */
+#endif /* exprtracker_h */

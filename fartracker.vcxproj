@@ -74,13 +74,13 @@
   <ItemGroup>
     <ClCompile Include="src\benchmark.cpp" />
     <ClCompile Include="src\common.cpp" />
-    <ClCompile Include="src\fartracker.cpp" />
+    <ClCompile Include="src\exprtracker.cpp" />
     <ClCompile Include="src\jsoncpp.cpp" />
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\common.h" />
-    <ClInclude Include="src\fartracker.h" />
+    <ClInclude Include="src\exprtracker.h" />
     <ClInclude Include="src\json.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

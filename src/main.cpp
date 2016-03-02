@@ -527,7 +527,9 @@ int main(int argc, char **argv)
 	//test_surf();
 	//generate_code();
 	//test_hessian();	
-	run_benchmark();	
+	if (argc > 1)
+		expr.load(argv[1]);
+	run_benchmark();
 
 	return 0;
 }

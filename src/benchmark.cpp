@@ -1,9 +1,8 @@
 #include "common.h"
-#include "fartracker.h"
+#include "exprtracker.h"
 
 namespace benchmark
-{	
-	const string dir_log = "./benchmark/";
+{		
 	mutex M_global;
 	Statistics global_short(false), global_long(false), global_whole(false);
 	ofstream global_log;
@@ -28,8 +27,23 @@ namespace benchmark
 		return _rect;		
 	}
 
+	void detect(CascadeClassifier &detector, Mat gray, vector<Rect2f> &rects)
+	{		
+		vector<Rect> faces;
+		detector.detectMultiScale(gray, faces);
+		rects.clear();
+		for (auto& r : faces) {
+			float w = 0.78f * r.width;
+			float h = 0.78f * r.height;
+			float x = r.x + r.width * 0.5f - w * 0.5f;
+			float y = r.y + r.height * 0.55f - h * 0.5f;
+			rects.push_back(Rect2f(x, y, w, h));
+		}		
+	}
+
 	void invoker(int threadID)
 	{		
+		CascadeClassifier detector(expr.detector_model);
 		Sequence *seq = NULL;		
 		int cnt = 0;
 		while ((seq = Sequence::getSeq()) != NULL) {									
@@ -38,32 +52,38 @@ namespace benchmark
 			ss << "(" << seq->getStart() << "-" << seq->getEnd() << ")";
 			ss << seq->getWidth() << "x" << seq->getHeight();
 			string alias = ss.str();
-			
-			ofstream log(dir_log + alias + ".txt");
-			log << alias << endl;
+			bool verbose = !expr.dir_detail.empty();
+
+			ofstream log;
+			if (verbose) {
+				log.open(expr.dir_detail + alias + ".txt");
+				log << alias << endl;
+			}
 			M_global.lock();
 			cout << threadID << ": " << alias << endl;
 			M_global.unlock();
 			
 			seq->loadImage();
-			FARTracker *fart = NULL;			
-			int last_detect = -1;						
+			ExprTracker *fart = NULL;
+			int last_detect = 0;						
 
 			Statistics st(true);
 			for (int i = seq->getStart(); i <= seq->getEnd(); ++i) {
-				log << endl << "Frame " << i << " ";
-				log << (seq->getClear(i) ? "Clear" : "Unclear") << endl;
+				if (verbose) {
+					log << endl << "Frame " << i << " ";
+					log << (seq->getClear(i) ? "Clear" : "Unclear") << endl;
+				}
 				Mat gray = seq->getImage(i);
 				Rect2f gt = seq->getRect(i), result;
 				vector<Rect2f> detections;
 
 				if (fart == NULL) {
 					result = gt;			
-					fart = new FARTracker(gray.data, gray.cols, gray.rows, cv2far(result), &log);
+					fart = new ExprTracker(gray.data, gray.cols, gray.rows, cv2far(result), verbose ? &log : NULL);
 				}
 				else {					
-					if (!fart->check() && i - last_detect >= 30) {
-						detect(gray, detections);
+					if (!fart->check() && i - last_detect >= expr.detector_frequence) {
+						detect(detector, gray, detections);
 						last_detect = i;
 					}										
 					if (detections.empty()) 
@@ -76,25 +96,29 @@ namespace benchmark
 					}
 				}				
 
-				log << "result : " << Rect(result) << endl;
-				if (seq->getClear(i)) 
-					log << "groundtruth : " << Rect(gt) << endl;
 				float error = fart->error;
-				log << "error : " << error << endl;
-				if (seq->getClear(i)) {
-					float score = overlap(gt, result);
-					log << "score : " << score << endl;
-					if (score < 0.5f)
-						log << "Wrong!!!" << endl;
-				}									
+				if (verbose) {
+					log << "result : " << Rect(result) << endl;
+					if (seq->getClear(i))
+						log << "groundtruth : " << Rect(gt) << endl;					
+					log << "error : " << error << endl;
+					if (seq->getClear(i)) {
+						float score = overlap(gt, result);
+						log << "score : " << score << endl;
+						if (score < 0.5f)
+							log << "Wrong!!!" << endl;
+					}
+				}
 				if (last_detect != i)
-					st.track(gt, result, error < threshold_error);
+					st.track(gt, result, error < expr.fine_threshold);
 				else
-					st.retrack(gt, result, error < threshold_error, detections);
+					st.retrack(gt, result, error < expr.fine_threshold, detections);
 				seq->setRect(i, result);
 			}
-			log << endl << st << endl;
-			log.close();
+			if (verbose) {
+				log << endl << st << endl;
+				log.close();
+			}
 
 			M_global.lock();
 			global_log << alias << endl << st << endl;
@@ -119,11 +143,13 @@ namespace benchmark
 
 	void main()
 	{		
-		mkdir(dir_log);
-		global_log.open(dir_log + "log.txt");
+		if (!expr.dir_detail.empty())
+			mkdir(expr.dir_detail);
+		global_log.open(expr.path_log);
 
+		setNumThreads(0);
 		vector<thread> ths;
-		for (int i = 0; i < nThreads; ++i)
+		for (int i = 0; i < expr.nThreads; ++i)
 			ths.push_back(thread(&invoker, i));
 		for (auto& th : ths)
 			th.join();
@@ -134,12 +160,16 @@ namespace benchmark
 			global_log << "Long benchmark : " << endl << global_long << endl;
 		if (!global_whole.empty())
 			global_log << "Whole benchmark : " << endl << global_whole << endl;
+		global_whole += global_short;
+		global_whole += global_long;
+		if (!global_whole.empty())
+			global_log << "Overall : " << endl << global_whole << endl;
 		global_log.close();
 	}
 }
 
 void run_benchmark()
 {	
-	cout << "Run benchmark with " << nThreads << " threads" << endl;
+	cout << "Run benchmark with " << expr.nThreads << " threads" << endl;
 	benchmark::main();
 }
