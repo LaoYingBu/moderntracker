@@ -98,9 +98,9 @@ namespace benchmark
 
 				float error = fart->error;
 				if (verbose) {
-					log << "result : " << Rect(result) << endl;
+					log << "result : " << Rect(int(result.x), int(result.y), int(result.width), int(result.height)) << endl;
 					if (seq->getClear(i))
-						log << "groundtruth : " << Rect(gt) << endl;					
+						log << "groundtruth : " << Rect(int(gt.x), int(gt.y), int(gt.width), int(gt.height)) << endl;
 					log << "error : " << error << endl;
 					if (seq->getClear(i)) {
 						float score = overlap(gt, result);
@@ -109,10 +109,16 @@ namespace benchmark
 							log << "Wrong!!!" << endl;
 					}
 				}
-				if (last_detect != i)
-					st.track(gt, result, error < expr.fine_threshold);
+				st.track(gt, result, error < expr.fine_threshold);
+				if (fart->is_fine)
+					st.fine_track(fart->final_choice, gt, far2cv(fart->fine_start));
+				if (fart->is_fast)
+					st.fast_track(fart->final_choice, gt, far2cv(fart->fast_start));
+				if (fart->is_detect)
+					st.detect_track(fart->final_choice, gt, far2cv(fart->fast_start));
 				else
-					st.retrack(gt, result, error < expr.fine_threshold, detections);
+				if (i == last_detect)
+					st.detect_track(fart->final_choice, gt, Rect2f(0.0f, 0.0f, 0.0f, 0.0f));
 				seq->setRect(i, result);
 			}
 			if (verbose) {

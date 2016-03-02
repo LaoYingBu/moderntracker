@@ -417,10 +417,19 @@ log(os)
 	fine_errors.push_back(0.0f);
 	error = 0.0f;
 	roll = yaw = pitch = 0.0f;
+
+	// add for expr
+	final_choice = 1;
+	is_fine = true;
+	fine_start = rect;
+	is_fast = false;
+	is_detect = false;
 }
 
 far_rect_t ExprTracker::track(const unsigned char *gray)
 {
+	is_fine = is_fast = is_detect = false;
+
 	if (log != NULL) {
 		(*log) << "roll = " << roll * 90.0f / PI_2 << endl;
 		(*log) << "yaw = " << yaw * 90.0f / PI_2 << endl;
@@ -428,19 +437,23 @@ far_rect_t ExprTracker::track(const unsigned char *gray)
 	}
 	feature.process(gray, roll);
 
-	Warp w = warp;
+	Warp w = warp;	
 	if (log != NULL)
 		(*log) << "track at " << w.t.transpose() << " " << window(w.t) << endl;
+	is_fine = true; fine_start = window(w.t); // add for expr
 	w = fine_test(w);
-	float e = evaluate(w);
+	final_choice = 1; // add for expr
+	float e = evaluate(w);	
 	if (e > expr.fast_threshold) {
 		Warp w2 = warp;
-		w2.sett(fast_test(warp));
+		w2.sett(fast_test(warp));		
 		if (log != NULL)
 			(*log) << "search at " << w2.t.transpose() << " " << window(w2.t) << endl;
+		is_fast = true; fast_start = window(w2.t); // add for expr
 		w2 = fine_test(w2);
 		float e2 = evaluate(w2);
 		if (e2 < e) {
+			final_choice = 2; // add for expr
 			w = w2;
 			e = e2;
 		}
@@ -452,6 +465,8 @@ far_rect_t ExprTracker::track(const unsigned char *gray)
 
 far_rect_t ExprTracker::retrack(const unsigned char *gray, const vector<far_rect_t> &detections)
 {
+	is_fine = is_fast = is_detect = false; // add for expr
+	
 	if (log != NULL) {
 		(*log) << "roll = " << roll * 90.0f / PI_2 << endl;
 		(*log) << "yaw = " << yaw * 90.0f / PI_2 << endl;
@@ -460,35 +475,51 @@ far_rect_t ExprTracker::retrack(const unsigned char *gray, const vector<far_rect
 	feature.process(gray, 0.0f);
 
 	Warp w = warp;
-	w.setr(Vector3f(0.0f, 0.0f, 0.0f));
-	if (log != NULL)
-		(*log) << "track at " << w.t.transpose() << " " << window(w.t) << endl;
-	w = fine_test(w);
-	float e = evaluate(w);
-	Warp w2 = warp;
-	w2.setr(Vector3f(0.0f, 0.0f, 0.0f));
-	w2.sett(fast_test(warp));
-	if (log != NULL)
-		(*log) << "search at " << w2.t.transpose() << " " << window(w2.t) << endl;
-	w2 = fine_test(w2);
-	float e2 = evaluate(w2);
-	if (e2 < e) {
-		w = w2;
-		e = e2;
-	}
+	float e = 1.0f;
+
 	for (auto d : detections) {
 		Warp w3 = warp;
 		w3.setr(Vector3f(0.0f, 0.0f, 0.0f));
 		w3.sett(locate(d));
 		if (log != NULL)
 			(*log) << "detect at " << w3.t.transpose() << " " << window(w3.t) << endl;
-		w3 = fine_test(w3);
+		is_detect = true; detect_start = window(w3.t); // add for expr
+		w3 = fine_test(w3);		
 		float e3 = evaluate(w3);
-		if (e3 < e) {
+		if (e3 < e) {			
+			final_choice = 3; // add for expr
 			w = w3;
 			e = e3;
 		}
 	}
+
+	Warp w1 = warp;	
+	w1.setr(Vector3f(0.0f, 0.0f, 0.0f));	
+	if (log != NULL)
+		(*log) << "track at " << w1.t.transpose() << " " << window(w1.t) << endl;
+	is_fine = true; fine_start = window(w1.t); // add for expr
+	w1 = fine_test(w1);
+	float e1 = evaluate(w1);
+	if (e1 < e) {
+		final_choice = 1; // add for expr
+		w = w1;
+		e = e1;
+	}
+
+	Warp w2 = warp;
+	w2.setr(Vector3f(0.0f, 0.0f, 0.0f));
+	w2.sett(fast_test(warp));	
+	if (log != NULL)
+		(*log) << "search at " << w2.t.transpose() << " " << window(w2.t) << endl;
+	is_fast = true; fast_start = window(w2.t); // add for expr
+	w2 = fine_test(w2);	
+	float e2 = evaluate(w2);
+	if (e2 < e) {
+		final_choice = 2; // add for expr
+		w = w2;
+		e = e2;
+	}
+
 	update(w, e);
 
 	return window(w.t);

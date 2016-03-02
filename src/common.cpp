@@ -2,13 +2,13 @@
 
 void mkdir(string dir)
 {
-#ifdef __linux__
+#ifdef __linux
 	if (access(dir.c_str(), F_OK) == -1)
 		mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 #else
 	if (_access(dir.c_str(), 0) == -1)
 		_mkdir(dir.c_str());
-#endif // __linux__
+#endif // __linux
 }
 
 float overlap(Rect2f a, Rect2f b)
@@ -141,9 +141,11 @@ Sequence* Sequence::getSeq()
 		++perm_iter;
 	}
 	else {		
-		ofstream fout(expr.path_result);
-		fout << StyledWriter().write(root) << endl;
-		fout.close();
+		if (!expr.path_result.empty()) {
+			ofstream fout(expr.path_result);
+			fout << StyledWriter().write(root) << endl;
+			fout.close();
+		}
 	}
 	M_sequence.unlock();
 	return ret;
@@ -155,8 +157,8 @@ void Sequence::setSeq(Sequence* seq)
 	Value &R = seq->V["rects"];
 	auto iter = seq->rects.begin();
 	for (auto &r : R) {
-		r[0] = iter->x;
-		r[1] = iter->y;
+		r[0] = iter->x + 1;
+		r[1] = iter->y + 1;
 		r[2] = iter->width;
 		r[3] = iter->height;
 		++iter;
@@ -268,9 +270,11 @@ Statistics::Statistics(bool isSeq)
 {
 	nSeq = int(isSeq);
 	nFrame = nClear = nUnclear = 0;
-	n50 = n80 = nSuccess = nFail = nDetect = 0;
-	nDetectUnclear = nDetect50 = 0;
-	scores = scoresDetect = secs = 0.0;
+	n50 = n80 = nSuccess = nFail = 0;
+	nFine = nFineClear = nFineUnclear = nFine50 = nFineChoice = 0;
+	nFast = nFastClear = nFastUnclear = nFast50 = nFastChoice = 0;
+	nDetect = nDetectClear = nDetectUnclear = nDetect50 = nDetectChoice = 0;
+	scores = scoresFine = scoresFast = scoresDetect = secs = 0.0;	
 	start_clock = end_clock = 0;
 }
 
@@ -295,22 +299,55 @@ void Statistics::track(Rect2f gt, Rect2f result, bool success)
 		if (score >= 0.8f)
 			++n80;
 		scores += score;
-		++(success ? nSuccess : nFail);		
-	}	
+		++(success ? nSuccess : nFail);
+	}
+	else
+		++nUnclear;
 }
 
-void Statistics::retrack(Rect2f gt, Rect2f result, bool success, const vector<Rect2f> &detections)
+void Statistics::fine_track(int choice, Rect2f gt, Rect2f start)
 {
-	track(gt, result, success);
+	++nFine;
+	if (gt.area() > 0) {
+		++nFineClear;
+		float score = overlap(gt, start);
+		if (score >= 0.5f)
+			++nFine50;
+		scoresFine += score;
+		if (choice == 1)
+			++nFineChoice;
+	}
+	else
+		++nFineUnclear;	
+}
+
+void Statistics::fast_track(int choice, Rect2f gt, Rect2f start)
+{
+	++nFast;
+	if (gt.area() > 0) {
+		++nFastClear;
+		float score = overlap(gt, start);
+		if (score >= 0.5f)
+			++nFast50;
+		scoresFast += score;
+		if (choice == 2)
+			++nFastChoice;
+	}
+	else
+		++nFastUnclear;
+}
+
+void Statistics::detect_track(int choice, Rect2f gt, Rect2f start)
+{
 	++nDetect;
 	if (gt.area() > 0) {
-		float score = 0.0f;
-		for (auto r : detections)
-		if (overlap(r, gt) > score)
-			score = overlap(r, gt);
-		if (score > 0.5f)
+		++nDetectClear;
+		float score = overlap(gt, start);
+		if (score >= 0.5f)
 			++nDetect50;
 		scoresDetect += score;
+		if (choice == 3)
+			++nDetectChoice;
 	}
 	else
 		++nDetectUnclear;
@@ -322,6 +359,10 @@ ostream& operator<<(ostream& cout, const Statistics &st)
 	double p80 = double(st.n80) / double(st.nClear) * 100;
 	double pSuccess = double(st.nSuccess) / double(st.nClear) * 100;
 	double pFail = double(st.nFail) / double(st.nClear) * 100;
+	double avg = st.scores / max(st.nClear, 1);
+	double avgFine = st.scoresFine / max(st.nFineClear, 1);
+	double avgFast = st.scoresFast / max(st.nFastClear, 1);
+	double avgDetect = st.scoresDetect / max(st.nDetectClear, 1);
 	if (st.nSeq > 1)
 		cout << st.nSeq << " sequence(s) : " << endl;
 	cout << "Clear / Total : " << st.nClear << "/" << st.nFrame << endl;
@@ -329,13 +370,13 @@ ostream& operator<<(ostream& cout, const Statistics &st)
 	cout << "Good(>0.8) / Clear : " << st.n80 << "/" << st.nClear << "(" << p80 << "%)" << endl;
 	cout << "Success / Clear : " << st.nSuccess << "/" << st.nClear << "(" << pSuccess << "%)" << endl;
 	cout << "Fail / Clear : " << st.nFail << "/" << st.nClear << "(" << pFail << "%)" << endl;	
-	cout << "Average tracking overlap ratio : " << st.scores / st.nClear << endl;
-	cout << "Detect / Total : " << st.nDetect << "/" << st.nFrame << endl;
-	cout << "Detect(Unclear Detected Not detected) : ";
-	cout << st.nDetectUnclear << " " << st.nDetect50 << " ";
-	cout << st.nDetect - st.nDetectUnclear - st.nDetect50 << endl;
-	if (st.nDetect - st.nDetectUnclear != 0)
-		cout << "Average detection overlap ratio : " << st.scoresDetect / (st.nDetect - st.nDetectUnclear) << endl;		
+	cout << "Average tracking overlap ratio : " << avg << endl;
+	cout << "Initial times (Fine Fast Detect) " << st.nFine << " " << st.nFast << " " << st.nDetect << endl;
+	cout << "Initial overlap ratio (Fine Fast Detect) : " << avgFine << " " << avgFast << " " << avgDetect << endl;
+	cout << "Final choice (Fine Fast Detect) : " << st.nFineChoice << " " << st.nFastChoice << " " << st.nDetectChoice << endl;	
+	cout << "Fine initial (Good Bad Unclear) : " << st.nFine50 << " " << st.nFineClear - st.nFine50 << " " << st.nFineUnclear << endl;
+	cout << "Fast initial (Good Bad Unclear) : " << st.nFast50 << " " << st.nFastClear - st.nFast50 << " " << st.nFastUnclear << endl;
+	cout << "Detect initial (Good Bad Unclear) : " << st.nDetect50 << " " << st.nDetectClear - st.nDetect50 << " " << st.nDetectUnclear << endl;			
 	cout << "Millisecond per frame : " << st.secs * 1000 / st.nFrame << endl;
 	return cout;
 }
@@ -350,10 +391,24 @@ Statistics& operator+=(Statistics& st, const Statistics &opt)
 	st.n80 += opt.n80;
 	st.nSuccess += opt.nSuccess;
 	st.nFail += opt.nFail;
+	st.nFine += opt.nFine;
+	st.nFineClear += opt.nFineClear;
+	st.nFineUnclear += opt.nFineUnclear;
+	st.nFine50 += opt.nFine50;
+	st.nFineChoice += opt.nFineChoice;
+	st.nFast += opt.nFast;
+	st.nFastClear += opt.nFastClear;
+	st.nFastUnclear += opt.nFastUnclear;
+	st.nFast50 += opt.nFast50;
+	st.nFastChoice += opt.nFastChoice;
 	st.nDetect += opt.nDetect;
+	st.nDetectClear += opt.nDetectClear;
 	st.nDetectUnclear += opt.nDetectUnclear;
 	st.nDetect50 += opt.nDetect50;
-	st.scores += opt.scores;	
+	st.nDetectChoice += opt.nDetectChoice;
+	st.scores += opt.scores;
+	st.scoresFine += opt.scoresFine;
+	st.scoresFast += opt.scoresFast;
 	st.scoresDetect += opt.scoresDetect;
 	st.secs += opt.secs;
 	return st;

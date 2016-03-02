@@ -1,8 +1,6 @@
 #ifndef common_h
 #define common_h
 
-#define _CRT_SECURE_NO_WARNINGS
-
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -23,15 +21,19 @@ using namespace std;
 #ifdef __linux
 #include <unistd.h>
 #include <sys/stat.h> 
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/objdetect/objdetect.hpp>
 #else
 #include <io.h>
 #include <direct.h>
+#include <opencv2/world.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/objdetect.hpp>
 #endif /* __linux */
 
-#include <opencv2\world.hpp>
-#include <opencv2\highgui.hpp>
-#include <opencv2\imgproc.hpp>
-#include <opencv2\objdetect.hpp>
 using namespace cv;
 
 #ifndef Recf2f
@@ -57,7 +59,7 @@ public:
 
 	//path_log contatins the global statistics information	
 	string path_log;
-	//path_result contains the final rectangle output
+	//path_result contains the final rectangle output, use empty string to discard
 	string path_result;
 	//dir_detail contatins the log for each sequence, use empty string to discard
 	string dir_detail;
@@ -154,13 +156,17 @@ public:
 
 	bool empty();
 	void track(Rect2f gt, Rect2f result, bool success);
-	void retrack(Rect2f gt, Rect2f result, bool success, const vector<Rect2f> &detections);
+	void fine_track(int choice, Rect2f gt, Rect2f start);
+	void fast_track(int choice, Rect2f gt, Rect2f start);
+	void detect_track(int choice, Rect2f gt, Rect2f start);
 
 private:
 	int nSeq, nFrame, nClear, nUnclear;
-	int n50, n80, nSuccess, nFail, nDetect;
-	int nDetectUnclear, nDetect50;
-	double scores, scoresDetect, secs;
+	int n50, n80, nSuccess, nFail;
+	int nFine, nFineClear, nFineUnclear, nFine50, nFineChoice;
+	int nFast, nFastClear, nFastUnclear, nFast50, nFastChoice;
+	int nDetect, nDetectClear, nDetectUnclear, nDetect50, nDetectChoice;	
+	double scores, scoresFine, scoresFast, scoresDetect, secs;
 	clock_t start_clock, end_clock;
 };
 

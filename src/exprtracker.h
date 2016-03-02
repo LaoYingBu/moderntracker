@@ -178,6 +178,11 @@ public:
 	Warp warp;
 	float error, roll, yaw, pitch;
 
+public:
+	int final_choice;
+	bool is_fine, is_fast, is_detect;
+	far_rect_t fine_start, fast_start, detect_start;
+
 private:
 	Surf feature;
 	vector<Vector2i> fast_samples;
