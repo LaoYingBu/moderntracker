@@ -271,6 +271,7 @@ Statistics::Statistics(bool isSeq)
 	nSeq = int(isSeq);
 	nFrame = nClear = nUnclear = 0;
 	n50 = n80 = nSuccess = nFail = 0;
+	nMLK = nIteration = 0;
 	nFine = nFineClear = nFineUnclear = nFine50 = nFineChoice = 0;
 	nFast = nFastClear = nFastUnclear = nFast50 = nFastChoice = 0;
 	nDetect = nDetectClear = nDetectUnclear = nDetect50 = nDetectChoice = 0;
@@ -283,7 +284,7 @@ bool Statistics::empty()
 	return nSeq == 0;
 }
 
-void Statistics::track(Rect2f gt, Rect2f result, bool success)
+void Statistics::track(Rect2f gt, Rect2f result, bool success, int number_MLK, int number_iteration)
 {
 	if (nFrame == 0)
 		start_clock = clock();
@@ -303,6 +304,8 @@ void Statistics::track(Rect2f gt, Rect2f result, bool success)
 	}
 	else
 		++nUnclear;
+	nMLK += number_MLK;
+	nIteration += number_iteration;
 }
 
 void Statistics::fine_track(int choice, Rect2f gt, Rect2f start)
@@ -359,6 +362,9 @@ ostream& operator<<(ostream& cout, const Statistics &st)
 	double p80 = double(st.n80) / double(st.nClear) * 100;
 	double pSuccess = double(st.nSuccess) / double(st.nClear) * 100;
 	double pFail = double(st.nFail) / double(st.nClear) * 100;
+	double avgMLK = double(st.nMLK) / double(st.nFrame);
+	double avgIteration = double(st.nIteration) / double(st.nFrame);
+	double avgIteration2 = double(st.nIteration) / double(st.nMLK);
 	double avg = st.scores / max(st.nClear, 1);
 	double avgFine = st.scoresFine / max(st.nFineClear, 1);
 	double avgFast = st.scoresFast / max(st.nFastClear, 1);
@@ -371,6 +377,8 @@ ostream& operator<<(ostream& cout, const Statistics &st)
 	cout << "Success / Clear : " << st.nSuccess << "/" << st.nClear << "(" << pSuccess << "%)" << endl;
 	cout << "Fail / Clear : " << st.nFail << "/" << st.nClear << "(" << pFail << "%)" << endl;	
 	cout << "Average tracking overlap ratio : " << avg << endl;
+	cout << "Number of multi-scale Lucas-Kanade / Total : " << st.nMLK << "/" << st.nFrame << "(" << avgMLK << " every frame)" << endl;
+	cout << "Number of iterations / Total : " << st.nIteration << "/" << st.nFrame << "(" << avgIteration << " every frame, " << avgIteration2 << " every MLK)" << endl;
 	cout << "Initial times (Fine Fast Detect) " << st.nFine << " " << st.nFast << " " << st.nDetect << endl;
 	cout << "Initial overlap ratio (Fine Fast Detect) : " << avgFine << " " << avgFast << " " << avgDetect << endl;
 	cout << "Final choice (Fine Fast Detect) : " << st.nFineChoice << " " << st.nFastChoice << " " << st.nDetectChoice << endl;	
@@ -391,6 +399,8 @@ Statistics& operator+=(Statistics& st, const Statistics &opt)
 	st.n80 += opt.n80;
 	st.nSuccess += opt.nSuccess;
 	st.nFail += opt.nFail;
+	st.nMLK += opt.nMLK;
+	st.nIteration += opt.nIteration;
 	st.nFine += opt.nFine;
 	st.nFineClear += opt.nFineClear;
 	st.nFineUnclear += opt.nFineUnclear;

@@ -155,7 +155,7 @@ public:
 	Statistics(bool isSeq);
 
 	bool empty();
-	void track(Rect2f gt, Rect2f result, bool success);
+	void track(Rect2f gt, Rect2f result, bool success, int number_MLK, int number_iteration);
 	void fine_track(int choice, Rect2f gt, Rect2f start);
 	void fast_track(int choice, Rect2f gt, Rect2f start);
 	void detect_track(int choice, Rect2f gt, Rect2f start);
@@ -163,6 +163,7 @@ public:
 private:
 	int nSeq, nFrame, nClear, nUnclear;
 	int n50, n80, nSuccess, nFail;
+	int nMLK, nIteration;
 	int nFine, nFineClear, nFineUnclear, nFine50, nFineChoice;
 	int nFast, nFastClear, nFastUnclear, nFast50, nFastChoice;
 	int nDetect, nDetectClear, nDetectUnclear, nDetect50, nDetectChoice;	

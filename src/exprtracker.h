@@ -179,6 +179,7 @@ public:
 	float error, roll, yaw, pitch;
 
 public:
+	int number_MLK, number_iteration;
 	int final_choice;
 	bool is_fine, is_fast, is_detect;
 	far_rect_t fine_start, fast_start, detect_start;

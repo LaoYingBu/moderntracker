@@ -420,15 +420,15 @@ log(os)
 
 	// add for expr
 	final_choice = 1;
-	is_fine = true;
-	fine_start = rect;
-	is_fast = false;
-	is_detect = false;
+	number_MLK = 0;
+	number_iteration = 0;
+	is_fine = is_fast = is_detect = false;
 }
 
 far_rect_t ExprTracker::track(const unsigned char *gray)
 {
-	is_fine = is_fast = is_detect = false;
+	number_MLK = number_iteration = 0; // add for expr
+	is_fine = is_fast = is_detect = false; // add for expr
 
 	if (log != NULL) {
 		(*log) << "roll = " << roll * 90.0f / PI_2 << endl;
@@ -465,6 +465,7 @@ far_rect_t ExprTracker::track(const unsigned char *gray)
 
 far_rect_t ExprTracker::retrack(const unsigned char *gray, const vector<far_rect_t> &detections)
 {
+	number_MLK = number_iteration = 0; // add for expr
 	is_fine = is_fast = is_detect = false; // add for expr
 	
 	if (log != NULL) {
@@ -597,7 +598,6 @@ void ExprTracker::fast_train(Warp warp)
 		int ty = y + fast_samples[i].y();
 		memcpy(fast_model.col(i).data(), feature.cell_hist(tx, ty), 8 * sizeof(float));
 	}
-
 }
 
 void ExprTracker::fine_train(Warp warp)
@@ -662,6 +662,7 @@ Vector3f ExprTracker::fast_test(Warp warp)
 
 Warp ExprTracker::fine_test(Warp warp)
 {
+	++number_MLK;
 	far_rect_t rect = window(warp.t);
 	float fine_cell = sqrt(rectArea(rect) / expr.cell_n);
 	feature.set_cell(fine_cell);
@@ -725,6 +726,7 @@ Warp ExprTracker::Lucas_Kanade(Warp warp)
 {
 	float last_E = 1.0f;
 	for (int iter = 0; iter < expr.iteration_max; ++iter) {
+		++number_iteration;
 		Matrix<float, 6, 1> G = Matrix<float, 6, 1>::Constant(0.0f);
 		Matrix<float, 6, 6> H = Matrix<float, 6, 6>::Constant(0.0f);
 		float E = 0.0f;

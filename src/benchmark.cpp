@@ -83,7 +83,7 @@ namespace benchmark
 				}
 				else {					
 					if (!fart->check() && i - last_detect >= expr.detector_frequence) {
-						detect(detector, gray, detections);
+						detect(detector, gray, detections);	
 						last_detect = i;
 					}										
 					if (detections.empty()) 
@@ -109,7 +109,7 @@ namespace benchmark
 							log << "Wrong!!!" << endl;
 					}
 				}
-				st.track(gt, result, error < expr.fine_threshold);
+				st.track(gt, result, error < expr.fine_threshold, fart->number_MLK, fart->number_iteration);
 				if (fart->is_fine)
 					st.fine_track(fart->final_choice, gt, far2cv(fart->fine_start));
 				if (fart->is_fast)

@@ -45,13 +45,12 @@
       <IsLocalJavascript>false</IsLocalJavascript>
       <IsWindowsStoreApp>false</IsWindowsStoreApp>
       <IsWWA>false</IsWWA>
-      <LaunchProject>true</LaunchProject>
-      <OverrideProjectSettings>false</OverrideProjectSettings>
+      <LaunchProject>false</LaunchProject>
+      <OverrideProjectSettings>true</OverrideProjectSettings>
       <LaunchMethod>Executable</LaunchMethod>
       <ExecutablePath>x64\Release\fartracker.exe</ExecutablePath>
       <StartupDirectory>..\fartracker</StartupDirectory>
-      <Arguments>
-      </Arguments>
+      <Arguments>common\configuration.json</Arguments>
       <NetAppHost>IIS</NetAppHost>
       <NetBrowser>InternetExplorer</NetBrowser>
       <ExcludeSmallFuncs>true</ExcludeSmallFuncs>
@@ -65,27 +64,6 @@
     </Binary>
   </Binaries>
   <Reports>
-    <Report>
-      <Path>fartracker160229(6).vspx</Path>
-    </Report>
-    <Report>
-      <Path>fartracker160229(7).vspx</Path>
-    </Report>
-    <Report>
-      <Path>fartracker160229(8).vspx</Path>
-    </Report>
-    <Report>
-      <Path>fartracker160229(9).vspx</Path>
-    </Report>
-    <Report>
-      <Path>fartracker160229(10).vspx</Path>
-    </Report>
-    <Report>
-      <Path>fartracker160229(11).vspx</Path>
-    </Report>
-    <Report>
-      <Path>fartracker160229(12).vspx</Path>
-    </Report>
     <Report>
       <Path>fartracker160302.vspx</Path>
     </Report>

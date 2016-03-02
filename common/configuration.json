@@ -1,10 +1,10 @@
 {
 	"dir_benchmark" : "D:/face tracking/benchmark/",
 	"path_log" : "./benchmark/log.txt",
-	"path_result" : "./benchmark/mt.json",
-	"dir_detail": "./benchmark/",
+	"path_result" : "",
+	"dir_detail" : "",
 		
-	"nThreads" : 3,			
+	"nThreads" : 1,			
 	"resolution" : 
 	{
 		"width" : 640,
