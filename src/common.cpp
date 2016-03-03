@@ -107,7 +107,7 @@ void Expr::edit(string param, string value)
 	auto pos = param.find_first_of('-');
 	Value newValue;
 	reader.parse(value, newValue);
-	if (pos >= 0)
+	if (pos != string::npos)
 		root[param.substr(0, pos)][param.substr(pos + 1)] = newValue;
 	else
 		root[param] = newValue;

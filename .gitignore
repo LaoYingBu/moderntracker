@@ -1,9 +1,13 @@
 /x64/
 /obj/
 /benchmark/
-*.opensdf
+*.sln
+*.vcxproj
+*.vcxproj.*
 *.sdf
+*.opensdf
 *.suo
-*.exe
+*.psess
 *.vspx
+*.exe
 *~
