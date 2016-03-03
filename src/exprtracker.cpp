@@ -151,7 +151,7 @@ void Surf::set_cell(float cell)
 		X[i] = x;
 		Y[i] = y;
 	}
-	C = max(int(floor(cell)), expr.cell_min);
+	C = max(int(floor(cell)), expr->cell_min);
 }
 
 void Surf::set_step(int step)
@@ -403,7 +403,7 @@ feature(width, height),
 log(os)
 {
 	warp.sett(locate(rect));
-	float fine_stride = sqrt(window_width * window_height / expr.fine_n);
+	float fine_stride = sqrt(window_width * window_height / expr->fine_n);
 	int W = int(floor(window_width / (2.0f * fine_stride)));
 	int H = int(floor(window_height / (2.0f * fine_stride)));
 	for (int y = 0; y <= 2 * H; ++y)
@@ -444,7 +444,7 @@ far_rect_t ExprTracker::track(const unsigned char *gray)
 	w = fine_test(w);
 	final_choice = 1; // add for expr
 	float e = evaluate(w);	
-	if (e > expr.fast_threshold) {
+	if (e > expr->fast_threshold) {
 		Warp w2 = warp;
 		w2.sett(fast_test(warp));		
 		if (log != NULL)
@@ -531,7 +531,7 @@ bool ExprTracker::check()
 	float s = 0.0f;
 	for (auto e : fine_errors)
 		s += e;
-	return s / fine_errors.size() < expr.detector_threshold;
+	return s / fine_errors.size() < expr->detector_threshold;
 }
 
 Vector3f ExprTracker::locate(far_rect_t rect)
@@ -562,7 +562,7 @@ void ExprTracker::update(Warp w, float e)
 		(*log) << "final error = " << e << endl;
 	}
 	error = e;
-	if (e < expr.fine_threshold) {
+	if (e < expr->fine_threshold) {
 		warp = w;
 		warp.euler(roll, yaw, pitch);
 		fine_train(warp);
@@ -571,14 +571,14 @@ void ExprTracker::update(Warp w, float e)
 		warp.t = w.t * (warp.t.z() / w.t.z());
 	fast_train(warp);
 	fine_errors.push_back(e);
-	while (fine_errors.size() > expr.detector_interval)
+	while (fine_errors.size() > expr->detector_interval)
 		fine_errors.pop_front();
 }
 
 void ExprTracker::fast_train(Warp warp)
 {
 	far_rect_t rect = window(warp.t);
-	float fast_stride = sqrt(rectArea(rect) / expr.fast_n);
+	float fast_stride = sqrt(rectArea(rect) / expr->fast_n);
 	feature.set_cell(fast_stride);
 	int W = int(rect.width * 0.5f / fast_stride);
 	int H = int(rect.height * 0.5f / fast_stride);
@@ -603,7 +603,7 @@ void ExprTracker::fast_train(Warp warp)
 void ExprTracker::fine_train(Warp warp)
 {
 	far_rect_t rect = window(warp.t);
-	float fine_cell = sqrt(rectArea(rect) / expr.cell_n);
+	float fine_cell = sqrt(rectArea(rect) / expr->cell_n);
 	feature.set_cell(fine_cell);
 	feature.set_step(1);
 
@@ -625,9 +625,9 @@ void ExprTracker::fine_train(Warp warp)
 Vector3f ExprTracker::fast_test(Warp warp)
 {
 	far_rect_t rect = window(warp.t);
-	float fast_stride = sqrt(rectArea(rect) / expr.fast_n);
+	float fast_stride = sqrt(rectArea(rect) / expr->fast_n);
 	feature.set_cell(fast_stride);
-	far_rect_t region = window(warp.t / (1.0f + expr.fast_padding));
+	far_rect_t region = window(warp.t / (1.0f + expr->fast_padding));
 	float minminx = -rect.width * 0.5f;
 	float minminy = -rect.height * 0.5f;
 	float maxmaxx = image_width + rect.width * 0.5f;
@@ -640,8 +640,8 @@ Vector3f ExprTracker::fast_test(Warp warp)
 	float best_score = 0.0f;
 	Vector3f best_translate = warp.t;
 	MatrixXf model(8, fast_samples.size());
-	for (int y = miny; y <= maxy; y += expr.fast_step)
-	for (int x = minx; x <= maxx; x += expr.fast_step) {
+	for (int y = miny; y <= maxy; y += expr->fast_step)
+	for (int x = minx; x <= maxx; x += expr->fast_step) {
 		for (int i = 0; i < fast_samples.size(); ++i) {
 			int tx = x + fast_samples[i].x();
 			int ty = y + fast_samples[i].y();
@@ -664,9 +664,9 @@ Warp ExprTracker::fine_test(Warp warp)
 {
 	++number_MLK;
 	far_rect_t rect = window(warp.t);
-	float fine_cell = sqrt(rectArea(rect) / expr.cell_n);
+	float fine_cell = sqrt(rectArea(rect) / expr->cell_n);
 	feature.set_cell(fine_cell);
-	for (auto fine_step : expr.fine_steps) {
+	for (auto fine_step : expr->fine_steps) {
 		if (fine_step > 2.0f * fine_cell)
 			continue;
 		feature.set_step(fine_step);
@@ -679,7 +679,7 @@ Warp ExprTracker::fine_test(Warp warp)
 
 float ExprTracker::sigmoid(float x)
 {
-	return 1.0f / (1.0f + exp(-expr.sigmoid_factor * (x - expr.sigmoid_bias)));
+	return 1.0f / (1.0f + exp(-expr->sigmoid_factor * (x - expr->sigmoid_bias)));
 }
 
 void ExprTracker::hessian(Matrix<float, 6, 6> &H, float w, const Matrix<float, 2, 6> &dW, const Matrix<float, 32, 2> &dF)
@@ -725,7 +725,7 @@ void ExprTracker::hessian(Matrix<float, 6, 6> &H, float w, const Matrix<float, 2
 Warp ExprTracker::Lucas_Kanade(Warp warp)
 {
 	float last_E = 1.0f;
-	for (int iter = 0; iter < expr.iteration_max; ++iter) {
+	for (int iter = 0; iter < expr->iteration_max; ++iter) {
 		++number_iteration;
 		Matrix<float, 6, 1> G = Matrix<float, 6, 1>::Constant(0.0f);
 		Matrix<float, 6, 6> H = Matrix<float, 6, 6>::Constant(0.0f);
@@ -738,7 +738,7 @@ Warp ExprTracker::Lucas_Kanade(Warp warp)
 			feature.gradient4(p.x(), p.y(), F.data(), dF.col(0).data(), dF.col(1).data());
 			F -= fine_model.col(i);
 			float e = sigmoid(F.squaredNorm());
-			float w = expr.sigmoid_factor * e * (1.0f - e);
+			float w = expr->sigmoid_factor * e * (1.0f - e);
 			G += w * (dW.transpose() * (dF.transpose() * -F));
 			//H.triangularView<Upper> += w * (dW.transpose() * (dF.transpose() * dF) * dW);
 			hessian(H, w, dW, dF);
@@ -750,7 +750,7 @@ Warp ExprTracker::Lucas_Kanade(Warp warp)
 		warp.steepest(D);
 		if (log != NULL)
 			(*log) << E << " ";
-		if (iter > 1 && D.segment<3>(3).squaredNorm() < expr.iteration_translate_eps && last_E - E < expr.iteration_error_eps)
+		if (iter > 1 && D.segment<3>(3).squaredNorm() < expr->iteration_translate_eps && last_E - E < expr->iteration_error_eps)
 			break;
 		last_E = E;
 	}
@@ -762,7 +762,7 @@ Warp ExprTracker::Lucas_Kanade(Warp warp)
 float ExprTracker::evaluate(Warp warp)
 {
 	far_rect_t rect = window(warp.t);
-	float fine_cell = sqrt(rectArea(rect) / expr.cell_n);
+	float fine_cell = sqrt(rectArea(rect) / expr->cell_n);
 	feature.set_cell(fine_cell);
 	feature.set_step(1);
 

@@ -43,7 +43,7 @@ namespace benchmark
 
 	void invoker(int threadID)
 	{		
-		CascadeClassifier detector(expr.detector_model);
+		CascadeClassifier detector(expr->detector_model);
 		Sequence *seq = NULL;		
 		int cnt = 0;
 		while ((seq = Sequence::getSeq()) != NULL) {									
@@ -52,11 +52,11 @@ namespace benchmark
 			ss << "(" << seq->getStart() << "-" << seq->getEnd() << ")";
 			ss << seq->getWidth() << "x" << seq->getHeight();
 			string alias = ss.str();
-			bool verbose = !expr.dir_detail.empty();
+			bool verbose = !expr->dir_detail.empty();
 
 			ofstream log;
 			if (verbose) {
-				log.open(expr.dir_detail + alias + ".txt");
+				log.open(expr->dir_detail + alias + ".txt");
 				log << alias << endl;
 			}
 			M_global.lock();
@@ -82,7 +82,7 @@ namespace benchmark
 					fart = new ExprTracker(gray.data, gray.cols, gray.rows, cv2far(result), verbose ? &log : NULL);
 				}
 				else {					
-					if (!fart->check() && i - last_detect >= expr.detector_frequence) {
+					if (!fart->check() && i - last_detect >= expr->detector_frequence) {
 						detect(detector, gray, detections);	
 						last_detect = i;
 					}										
@@ -109,7 +109,7 @@ namespace benchmark
 							log << "Wrong!!!" << endl;
 					}
 				}
-				st.track(gt, result, error < expr.fine_threshold, fart->number_MLK, fart->number_iteration);
+				st.track(gt, result, error < expr->fine_threshold, fart->number_MLK, fart->number_iteration);
 				if (fart->is_fine)
 					st.fine_track(fart->final_choice, gt, far2cv(fart->fine_start));
 				if (fart->is_fast)
@@ -149,14 +149,15 @@ namespace benchmark
 
 	void main()
 	{		
-		if (!expr.dir_detail.empty())
-			mkdir(expr.dir_detail);
-		global_log.open(expr.path_log);
-		global_log << expr.configuration << endl << endl;
+		if (!expr->dir_detail.empty())
+			mkdir(expr->dir_detail);
+		global_log.open(expr->path_log);
+		global_log << "Base configuration : " << expr->base_configuration << endl;
+		global_log << expr->save() << endl << endl;
 
 		setNumThreads(0);
 		vector<thread> ths;
-		for (int i = 0; i < expr.nThreads; ++i)
+		for (int i = 0; i < expr->nThreads; ++i)
 			ths.push_back(thread(&invoker, i));
 		for (auto& th : ths)
 			th.join();
@@ -177,6 +178,6 @@ namespace benchmark
 
 void run_benchmark()
 {	
-	cout << "Run benchmark with " << expr.nThreads << " threads" << endl;
+	cout << "Run benchmark with " << expr->nThreads << " threads" << endl;
 	benchmark::main();
 }

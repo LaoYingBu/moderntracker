@@ -523,24 +523,17 @@ void generate_code()
 
 int main(int argc, char **argv)
 {
-	//test_wrap();
-	//test_surf();
-	//generate_code();
-	//test_hessian();	
-	if (argc > 1)
-		expr.load(argv[1]);
-	if (argc > 2)
-	{
-		fprintf(stderr, "%s\n", "edit param...");
-		for(int i = 2; i < argc; i=i+2)
-		{
-			expr.edit(string(argv[i]), string(argv[i+1]));
-		}
+	expr = new Expr();
+	if (argc > 1) {
+		expr->load(argv[1]);
+		cout << "Base configuration : " << argv[1] << endl;
 	}
-	fprintf(stderr, "%s\n", "save new configuration file...");
-	expr.save();
-	fprintf(stderr, "%s\n", "run benchmark...");
+	for (int i = 2; i + 1 < argc; i += 2) {
+		expr->edit(argv[i], argv[i + 1]);
+		cout << "Edit param " << argv[i] << " = " << argv[i + 1] << endl;
+	}
 	run_benchmark();
+	delete expr;
 
 	return 0;
 }

@@ -21,64 +21,102 @@ float overlap(Rect2f a, Rect2f b)
 	return s / (a.area() + b.area() - s);
 }
 
-Expr expr;
-
 Expr::Expr()
 {
-	dir_benchmark = "D:/face tracking/benchmark/";
-	dir_data = dir_benchmark + "data/";
-	dir_image = dir_benchmark + "image/";
-	path_groundtruth = dir_data + "groundtruth.json";
+	base_configuration = "Baseline configuration";
 
-	path_log = "./benchmark/log.txt";
-	path_result = dir_data + "mt.json";
-	dir_detail = "./benchmark/";
-
-	nThreads = 3;
-	resolution_width = 640;
-	resolution_height = 480;
-
-	detector_model = "./common/haarcascade_frontalface_alt.xml";
-	detector_threshold = 0.4f;
-	detector_interval = 10;
-	detector_frequence = 30;
-
-	fast_n = 25;
-	fast_step = 2;
-	fast_padding = 1.6f;
-	fast_threshold = 0.4f;
-
-	fine_n = 600;
-	fine_steps[0] = 27;
-	fine_steps[1] = 9;
-	fine_steps[2] = 3;
-	fine_steps[3] = 1;
-	fine_threshold = 0.4f;
-
-	cell_min = 2;
-	cell_n = 150;
-
-	iteration_max = 9;
-	iteration_translate_eps = 0.1f;
-	iteration_error_eps = 0.001f;
-
-	sigmoid_factor = 7.141f;
-	sigmoid_bias = 0.482f;	
-
-	configuration = "Default configuration ( see common.cpp::Expr::Expr() )";
-}
-
-void Expr::load(string _path_configuration)
-{
-	path_configuration = _path_configuration;
-	path_configuration_old = _path_configuration;
+	const string document = 	
+		string("{") +
+		string("	\"dir_benchmark\" : \"D:/face tracking/benchmark/\",") +
+		string("	\"groundtruth\" : \"groundtruth.json\",") +
+		string("	\"path_log\" : \"./benchmark/log.txt\",") +
+		string("	\"path_result\" : \"\",") +
+		string("	\"dir_detail\" : \"\",") +
+		string("		") +
+		string("	\"nThreads\" : 1,			") +
+		string("	\"resolution\" : ") +
+		string("	{") +
+		string("		\"width\" : 640,") +
+		string("		\"height\" : 360") +
+		string("	},	") +
+		string("	") +
+		string("	\"detector\" :") +
+		string("	{") +
+		string("		\"model\" : \"./common/haarcascade_frontalface_default.xml\",") +
+		string("		\"threshold\" : 0.4,") +
+		string("		\"interval\" : 10,") +
+		string("		\"frequence\" : 30") +
+		string("	},") +
+		string("	") +
+		string("	\"fast\":") +
+		string("	{") +
+		string("		\"n\" : 25,") +
+		string("		\"step\" : 2,") +
+		string("		\"padding\" : 1.6,") +
+		string("		\"threshold\" : 0.4") +
+		string("	},") +
+		string("	") +
+		string("	\"fine\":") +
+		string("	{") +
+		string("		\"n\" : 600,") +
+		string("		\"steps\" : [27, 9, 3, 1],") +
+		string("		\"threshold\" : 0.4") +
+		string("	},") +
+		string("	") +
+		string("	\"cell\":") +
+		string("	{") +
+		string("		\"min\" : 2,") +
+		string("		\"n\" : 150") +
+		string("	},") +
+		string("	") +
+		string("	\"iteration\":") +
+		string("	{") +
+		string("		\"max\" : 9,") +
+		string("		\"translate_eps\" : 0.1,") +
+		string("		\"error_eps\" : 0.001") +
+		string("	},") +
+		string("	") +
+		string("	\"sigmoid\":") +
+		string("	{") +
+		string("		\"factor\" : 7.141,") +
+		string("		\"bias\" : 0.482") +
+		string("	}") +
+		string("}");
 
 	Reader reader;
-	Value root;
+	reader.parse(document, root);
+	load();
+}
+
+void Expr::load(string path_configuration)
+{
+	base_configuration = path_configuration;
 	ifstream fin(path_configuration);
 	reader.parse(fin, root);
 	fin.close();
+	load();
+}
 
+string Expr::save()
+{
+	return StyledWriter().write(root);
+}
+
+void Expr::edit(string param, string value)
+{
+	auto pos = param.find_first_of('-');
+	Value newValue;
+	reader.parse(value, newValue);
+	if (pos >= 0)
+		root[param.substr(0, pos)][param.substr(pos + 1)] = newValue;
+	else
+		root[param] = newValue;
+	root["path_log"] = path_log.substr(0, path_log.size() - 4) + "_(" + param + "=" + value + ").txt";
+	load();
+}
+
+void Expr::load()
+{
 	dir_benchmark = root["dir_benchmark"].asString();
 	dir_data = dir_benchmark + "data/";
 	dir_image = dir_benchmark + "image/";
@@ -92,7 +130,7 @@ void Expr::load(string _path_configuration)
 	resolution_width = root["resolution"]["width"].asInt();
 	resolution_height = root["resolution"]["height"].asInt();
 
-	detector_model = root["detector"]["model"].asString();		
+	detector_model = root["detector"]["model"].asString();
 	detector_threshold = root["detector"]["threshold"].asFloat();
 	detector_interval = root["detector"]["interval"].asInt();
 	detector_frequence = root["detector"]["frequence"].asInt();
@@ -118,170 +156,9 @@ void Expr::load(string _path_configuration)
 
 	sigmoid_factor = root["sigmoid"]["factor"].asFloat();
 	sigmoid_bias = root["sigmoid"]["bias"].asFloat();
-
-	fin.open(path_configuration);
-	configuration = string((istreambuf_iterator<char>(fin)), std::istreambuf_iterator<char>());
-	fin.close();
 }
 
-void Expr::edit(string param, string value)
-{
-	if(param == "fine_steps")
-	{
-		vector<int> v(4);
-		int pos1 = 0, pos2;
-		for(int i = 0; i < 3; i++)
-		{
-			pos2 = value.find(",");
-			stringstream ss;
-			ss << value.substr(pos1, pos2 - pos1);
-			ss >> v[i];
-			pos1 = pos2 + 1;
-		}
-		stringstream ss;
-		ss << value.substr(pos1, value.length());
-		ss >> v[3];
-
-		edit(param, v);
-	}
-	else
-	{
-		stringstream ss;
-		ss << value;
-		double value_d;
-		ss >> value_d;
-
-		edit(param, value_d);
-	}
-	path_log = path_log.substr(0, path_log.length() - 4) + "_(" + param + ":" + value + ").txt";
-	path_configuration = path_configuration.substr(0, path_log.length() - 5) + "_(" + param + ":" + value + ").json";
-
-}
-
-void Expr::edit(string param, vector<int> value)
-{
-	if(param == "fine_steps")
-	{
-		for(int i = 0; i < value.size(); i++)
-		{
-			fine_steps[i] = value[i];
-		}
-	}
-	else
-	{
-		fprintf(stderr, "%s\n", "No such param or type of the value dose not match the param.");
-		return;
-	}
-}
-
-void Expr::edit(string param, double value)
-{
-	if(param == "resolution_width")
-			resolution_width = int(value);
-
-		else if(param == "resolution_height")
-			resolution_height = int(value);
-
-		else if(param == "detector_threshold")
-			detector_threshold = value;
-
-		else if(param == "detector_interval")
-			detector_interval = int(value);
-
-		else if(param == "detector_frequence")
-			detector_frequence = int(value);
-
-		else if(param == "fast_n")
-			fast_n = int(value);
-
-		else if(param == "fast_step")
-			fast_step = int(value);
-
-		else if(param == "fast_padding")
-			fast_padding = value;
-
-		else if(param == "fast_threshold")
-			fast_threshold = value;
-
-		else if(param == "fine_n")
-			fine_n = int(value);
-
-		else if(param == "fine_threshold")
-			fine_threshold = value;
-
-		else if(param == "cell_min")
-			cell_min = int(value);
-
-		else if(param == "cell_n")
-			cell_n = int(cell_n);
-
-		else if(param == "iteration_max")
-			iteration_max = int(value);
-
-		else if(param == "iteration_translate_eps")
-			iteration_translate_eps = value;
-
-		else if(param == "iteration_error_eps")
-			iteration_error_eps = value;
-
-		else if(param == "sigmoid_factor")
-			sigmoid_factor = value;
-
-		else if(param == "sigmoid_bias")
-			sigmoid_bias = value;
-		
-		else
-			fprintf(stderr, "%s\n", "No such param or type of the value dose not match the param.");
-
-}
-
-void Expr::save()
-{
-	Reader reader;
-	Value root;
-	ifstream fin(path_configuration_old);
-	reader.parse(fin, root);
-	fin.close();
-
-	root["path_log"] = path_log;
-
-	root["resolution"]["width"] = resolution_width;
-	root["resolution"]["height"] = resolution_height;
-
-	root["detector"]["threshold"] = detector_threshold;
-	root["detector"]["interval"] = detector_interval;
-	root["detector"]["frequence"] = detector_frequence;
-
-	root["fast"]["n"] = fast_n;
-	root["fast"]["step"] = fast_step;
-	root["fast"]["padding"] = fast_padding;
-	root["fast"]["threshold"] = fast_threshold;
-
-	root["fine"]["n"] = fine_n;
-	root["fine"]["steps"][0] = fine_steps[0];
-	root["fine"]["steps"][1] = fine_steps[1];
-	root["fine"]["steps"][2] = fine_steps[2];
-	root["fine"]["steps"][3] = fine_steps[3];
-	root["fine"]["threshold"] = fine_threshold;
-
-	root["cell"]["min"] = cell_min;
-	root["cell"]["n"] = cell_n;
-
-	root["iteration"]["max"] = iteration_max;
-	root["iteration"]["translate_eps"] = iteration_translate_eps;
-	root["iteration"]["error_eps"] = iteration_error_eps;
-
-	root["sigmoid"]["factor"] = sigmoid_factor;
-	root["sigmoid"]["bias"] = sigmoid_bias;
-
-	ofstream fout(path_configuration);
-	fout << StyledWriter().write(root) << endl;
-	fout.close();
-
-	fin.open(path_configuration);
-	configuration = string((istreambuf_iterator<char>(fin)), std::istreambuf_iterator<char>());
-	fin.close();
-}
+Expr *expr = NULL;
 
 mutex Sequence::M_sequence;
 Reader Sequence::reader;
@@ -293,7 +170,7 @@ Sequence* Sequence::getSeq()
 {
 	M_sequence.lock();
 	if (root.empty()) {
-		ifstream fin(expr.path_groundtruth);
+		ifstream fin(expr->path_groundtruth);
 		reader.parse(fin, root);
 		fin.close();
 		perm.resize(root.size());
@@ -309,8 +186,8 @@ Sequence* Sequence::getSeq()
 		++perm_iter;
 	}
 	else {		
-		if (!expr.path_result.empty()) {
-			ofstream fout(expr.path_result);
+		if (!expr->path_result.empty()) {
+			ofstream fout(expr->path_result);
 			fout << StyledWriter().write(root) << endl;
 			fout.close();
 		}
@@ -343,7 +220,7 @@ Sequence::Sequence(Value &_V) : V(_V)
 	width = V["width"].asInt();
 	height = V["height"].asInt();
 	type = V["type"].asString();
-	image_scale = sqrt(float(expr.resolution_width * expr.resolution_height) / float(width * height));
+	image_scale = sqrt(float(expr->resolution_width * expr->resolution_height) / float(width * height));
 	if (image_scale > 1.0f)
 		image_scale = 1.0f;
 
@@ -393,7 +270,7 @@ void Sequence::loadImage()
 		return;	
 	for (int i = start_frame; i <= end_frame; ++i) {
 		stringstream ss;
-		ss << expr.dir_image << name << "/";
+		ss << expr->dir_image << name << "/";
 		ss.width(4);
 		ss.fill('0');
 		ss << i << ".jpg";

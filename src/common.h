@@ -50,18 +50,17 @@ class Expr
 {
 public:
 	Expr();
-	void load(string _path_configuration);
-	void save();
+	void load(string path_configuration);
+	string save();
 	void edit(string param, string value);
 
 private:
-	void edit(string param, vector<int> value);
-	void edit(string param, double value);
+	void load();
 
-public:	
+public:
+	//base configuration without modification
+	string base_configuration;
 
-	string path_configuration;
-	string path_configuration_old;
 	//make sure /data and /image are under this directory
 	string dir_benchmark;
 	string dir_data, dir_image, path_groundtruth;
@@ -112,13 +111,14 @@ public:
 	float iteration_translate_eps, iteration_error_eps;
 
 	//parameters of sigmoid
-	float sigmoid_factor, sigmoid_bias;		
+	float sigmoid_factor, sigmoid_bias;	
 
-	//configuration content
-	string configuration;
+private:
+	Reader reader;
+	Value root;
 };
 
-extern Expr expr;
+extern Expr *expr;
 
 class Sequence
 {
