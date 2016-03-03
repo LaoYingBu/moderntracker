@@ -1,6 +1,6 @@
 {
 	"dir_benchmark" : "/home/hqq/moderntracker/benchmark/",
-	"groundtruth" : "groundtruth.json",
+	"groundtruth" : "debug.json",
 	"path_log" : "./benchmark/log.txt",
 	"path_result" : "",
 	"dir_detail" : "",

@@ -1,0 +1,43 @@
+{
+   "cell" : {
+      "min" : 2,
+      "n" : 150
+   },
+   "detector" : {
+      "frequence" : 30,
+      "interval" : 10,
+      "model" : "./common/haarcascade_frontalface_default.xml",
+      "threshold" : 0.40000000596046448
+   },
+   "dir_benchmark" : "/home/hqq/moderntracker/benchmark/",
+   "dir_detail" : "",
+   "fast" : {
+      "n" : 25,
+      "padding" : 1.6000000238418579,
+      "step" : 2,
+      "threshold" : 0.40000000596046448
+   },
+   "fine" : {
+      "n" : 600,
+      "steps" : [ 27, 9, 3, 1 ],
+      "threshold" : 0.40000000596046448
+   },
+   "groundtruth" : "groundtruth.json",
+   "iteration" : {
+      "error_eps" : 0.0010000000474974513,
+      "max" : 9,
+      "translate_eps" : 0.10000000149011612
+   },
+   "nThreads" : 1,
+   "path_log" : "./benchmark/log_(resolution_width:320).txt",
+   "path_result" : "",
+   "resolution" : {
+      "height" : 360,
+      "width" : 320
+   },
+   "sigmoid" : {
+      "bias" : 0.48199999332427979,
+      "factor" : 7.1409997940063477
+   }
+}
+

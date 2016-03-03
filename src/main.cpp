@@ -529,6 +529,17 @@ int main(int argc, char **argv)
 	//test_hessian();	
 	if (argc > 1)
 		expr.load(argv[1]);
+	if (argc > 2)
+	{
+		fprintf(stderr, "%s\n", "edit param...");
+		for(int i = 2; i < argc; i=i+2)
+		{
+			expr.edit(string(argv[i]), string(argv[i+1]));
+		}
+	}
+	fprintf(stderr, "%s\n", "save new configuration file...");
+	expr.save();
+	fprintf(stderr, "%s\n", "run benchmark...");
 	run_benchmark();
 
 	return 0;

@@ -50,9 +50,18 @@ class Expr
 {
 public:
 	Expr();
-	void load(string path_configuration);
+	void load(string _path_configuration);
+	void save();
+	void edit(string param, string value);
+
+private:
+	void edit(string param, vector<int> value);
+	void edit(string param, double value);
 
 public:	
+
+	string path_configuration;
+	string path_configuration_old;
 	//make sure /data and /image are under this directory
 	string dir_benchmark;
 	string dir_data, dir_image, path_groundtruth;
