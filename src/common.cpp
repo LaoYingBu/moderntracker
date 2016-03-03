@@ -64,6 +64,8 @@ Expr::Expr()
 
 	sigmoid_factor = 7.141f;
 	sigmoid_bias = 0.482f;	
+
+	configuration = "Default configuration ( see common.cpp::Expr::Expr() )";
 }
 
 void Expr::load(string path_configuration)
@@ -77,7 +79,7 @@ void Expr::load(string path_configuration)
 	dir_benchmark = root["dir_benchmark"].asString();
 	dir_data = dir_benchmark + "data/";
 	dir_image = dir_benchmark + "image/";
-	path_groundtruth = dir_data + "groundtruth.json";
+	path_groundtruth = dir_data + root["groundtruth"].asString();
 
 	path_log = root["path_log"].asString();
 	path_result = root["path_result"].asString();
@@ -113,6 +115,10 @@ void Expr::load(string path_configuration)
 
 	sigmoid_factor = root["sigmoid"]["factor"].asFloat();
 	sigmoid_bias = root["sigmoid"]["bias"].asFloat();
+
+	fin.open(path_configuration);
+	configuration = string((istreambuf_iterator<char>(fin)), std::istreambuf_iterator<char>());
+	fin.close();
 }
 
 mutex Sequence::M_sequence;

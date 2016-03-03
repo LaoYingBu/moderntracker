@@ -152,6 +152,7 @@ namespace benchmark
 		if (!expr.dir_detail.empty())
 			mkdir(expr.dir_detail);
 		global_log.open(expr.path_log);
+		global_log << expr.configuration << endl << endl;
 
 		setNumThreads(0);
 		vector<thread> ths;

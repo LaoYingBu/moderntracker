@@ -104,6 +104,9 @@ public:
 
 	//parameters of sigmoid
 	float sigmoid_factor, sigmoid_bias;		
+
+	//configuration content
+	string configuration;
 };
 
 extern Expr expr;
