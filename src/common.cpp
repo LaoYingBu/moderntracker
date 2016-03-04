@@ -29,7 +29,7 @@ Expr::Expr()
 		string("{") +
 		string("	\"dir_benchmark\" : \"D:/face tracking/benchmark/\",") +
 		string("	\"groundtruth\" : \"groundtruth.json\",") +
-		string("	\"path_log\" : \"./benchmark/log.txt\",") +
+		string("	\"path_log\" : \"./benchmark/log_baseline.txt\",") +
 		string("	\"path_result\" : \"\",") +
 		string("	\"dir_detail\" : \"\",") +
 		string("		") +
@@ -321,7 +321,18 @@ Statistics::Statistics(bool isSeq)
 	nFast = nFastClear = nFastUnclear = nFast50 = nFastChoice = 0;
 	nDetect = nDetectClear = nDetectUnclear = nDetect50 = nDetectChoice = 0;
 	scores = scoresFine = scoresFast = scoresDetect = secs = 0.0;	
-	start_clock = end_clock = 0;
+	start_clock = end_clock = 0.0;
+}
+
+void Statistics::tic()
+{
+	start_clock = getTickCount();
+}
+
+void Statistics::toc()
+{
+	end_clock = getTickCount();
+	secs = (end_clock - start_clock) / getTickFrequency();
 }
 
 bool Statistics::empty()
@@ -331,11 +342,6 @@ bool Statistics::empty()
 
 void Statistics::track(Rect2f gt, Rect2f result, bool success, int number_MLK, int number_iteration)
 {
-	if (nFrame == 0)
-		start_clock = clock();
-	end_clock = clock();
-	secs = double(end_clock - start_clock) / CLOCKS_PER_SEC;
-
 	++nFrame;
 	if (gt.area() > 0) {
 		++nClear;

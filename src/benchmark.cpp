@@ -68,6 +68,7 @@ namespace benchmark
 			int last_detect = 0;						
 
 			Statistics st(true);
+			st.tic();
 			for (int i = seq->getStart(); i <= seq->getEnd(); ++i) {
 				if (verbose) {
 					log << endl << "Frame " << i << " ";
@@ -121,6 +122,7 @@ namespace benchmark
 					st.detect_track(fart->final_choice, gt, Rect2f(0.0f, 0.0f, 0.0f, 0.0f));
 				seq->setRect(i, result);
 			}
+			st.toc();
 			if (verbose) {
 				log << endl << st << endl;
 				log.close();

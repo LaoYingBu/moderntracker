@@ -166,6 +166,9 @@ class Statistics
 public:
 	Statistics(bool isSeq);
 
+	void tic();
+	void toc();
+
 	bool empty();
 	void track(Rect2f gt, Rect2f result, bool success, int number_MLK, int number_iteration);
 	void fine_track(int choice, Rect2f gt, Rect2f start);
@@ -180,7 +183,7 @@ private:
 	int nFast, nFastClear, nFastUnclear, nFast50, nFastChoice;
 	int nDetect, nDetectClear, nDetectUnclear, nDetect50, nDetectChoice;	
 	double scores, scoresFine, scoresFast, scoresDetect, secs;
-	clock_t start_clock, end_clock;
+	double start_clock, end_clock;
 };
 
 ostream& operator<<(ostream& cout, const Statistics &st);
