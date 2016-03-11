@@ -750,7 +750,7 @@ Warp ExprTracker::Lucas_Kanade(Warp warp)
 		warp.steepest(D);
 		if (log != NULL)
 			(*log) << E << " ";
-		if (iter > 1 && D.segment<3>(3).squaredNorm() < expr->iteration_translate_eps && last_E - E < expr->iteration_error_eps)
+		if (iter > 0 && D.segment<3>(3).squaredNorm() < expr->iteration_translate_eps && last_E - E < expr->iteration_error_eps)
 			break;
 		last_E = E;
 	}
