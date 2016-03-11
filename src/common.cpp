@@ -269,14 +269,18 @@ void Sequence::loadImage()
 	if (!grays.empty())
 		return;	
 	for (int i = start_frame; i <= end_frame; ++i) {
+		Mat t;
 		stringstream ss;
 		ss << expr->dir_image << name << "/";
 		ss.width(4);
 		ss.fill('0');
-		ss << i << "_" << getWidth() << "x" << getHeight() << ".jpg";
-		Mat t = imread(ss.str(), 0);
-		if (t.empty()) {
-			stringstream ss2;			
+		ss << i << "_" << getWidth() << "x" << getHeight() << ".jpg";		
+#ifdef __linux
+		if (access(ss.str().c_str(), F_OK) == -1) {			
+#else
+		if (_access(ss.str().c_str(), 0) == -1) {
+#endif // __linux
+			stringstream ss2;
 			ss2 << expr->dir_image << name << "/";
 			ss2.width(4);
 			ss2.fill('0');
@@ -285,6 +289,8 @@ void Sequence::loadImage()
 			resize(gray, t, Size(getWidth(), getHeight()));
 			imwrite(ss.str(), t);
 		}
+		else 
+			t = imread(ss.str(), 0);		
 		grays.push_back(t);		
 	}
 }
