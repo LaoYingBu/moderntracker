@@ -273,10 +273,19 @@ void Sequence::loadImage()
 		ss << expr->dir_image << name << "/";
 		ss.width(4);
 		ss.fill('0');
-		ss << i << ".jpg";
-		Mat gray = imread(ss.str(), 0), t;
-		resize(gray, t, Size(getWidth(), getHeight()));
-		grays.push_back(t);
+		ss << i << "_" << getWidth() << "x" << getHeight() << ".jpg";
+		Mat t = imread(ss.str(), 0);
+		if (t.empty()) {
+			stringstream ss2;			
+			ss2 << expr->dir_image << name << "/";
+			ss2.width(4);
+			ss2.fill('0');
+			ss2 << i << ".jpg";
+			Mat gray = imread(ss2.str(), 0);
+			resize(gray, t, Size(getWidth(), getHeight()));
+			imwrite(ss.str(), t);
+		}
+		grays.push_back(t);		
 	}
 }
 

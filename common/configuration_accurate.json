@@ -1,7 +1,7 @@
 {
-	"dir_benchmark" : "/home/hqq/moderntracker/benchmark/",
+	"dir_benchmark" : "D:/face tracking/benchmark/",
 	"groundtruth" : "groundtruth.json",
-	"path_log" : "./benchmark/log.txt",
+	"path_log" : "./benchmark/log_accurate.txt",
 	"path_result" : "",
 	"dir_detail" : "",
 		
@@ -37,7 +37,7 @@
 	
 	"cell":
 	{
-		"min" : 2,
+		"min" : 1,
 		"n" : 150
 	},
 	
