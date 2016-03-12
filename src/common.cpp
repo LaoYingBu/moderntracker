@@ -286,7 +286,7 @@ void Sequence::loadImage()
 			ss2.fill('0');
 			ss2 << i << ".jpg";
 			Mat gray = imread(ss2.str(), 0);
-			resize(gray, t, Size(getWidth(), getHeight()));
+			resize(gray, t, Size(getWidth(), getHeight()));			
 			imwrite(ss.str(), t);
 		}
 		else 
