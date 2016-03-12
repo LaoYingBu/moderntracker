@@ -130,8 +130,12 @@ public:
 	static vector<int>::iterator perm_iter;
 
 public:
+	static void preload();
 	static Sequence* getSeq();
 	static void setSeq(Sequence* seq);	
+
+private:
+	static void invoker();
 
 public:
 	Sequence(Value &_V);

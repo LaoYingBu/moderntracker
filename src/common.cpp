@@ -166,6 +166,18 @@ Value Sequence::root;
 vector<int> Sequence::perm;
 vector<int>::iterator Sequence::perm_iter;
 
+void Sequence::preload()
+{
+	cout << "Preloading " << expr->resolution_width << "x" << expr->resolution_height << " images with " << expr->nThreads << " threads" << endl;
+	vector<thread> ths;
+	for (int i = 0; i < expr->nThreads; ++i)
+		ths.push_back(thread(&Sequence::invoker));
+	for (auto& th : ths)
+		th.join();
+	Sequence::root.clear();
+	cout << "Preloading finish" << endl;
+}
+
 Sequence* Sequence::getSeq()
 {
 	M_sequence.lock();
@@ -210,6 +222,16 @@ void Sequence::setSeq(Sequence* seq)
 	}
 	delete seq;
 	M_sequence.unlock();
+}
+
+void Sequence::invoker()
+{
+	Sequence *seq = NULL;
+	while ((seq = Sequence::getSeq()) != NULL) {
+		if (seq->getType() == "whole") 
+			seq->loadImage();
+		Sequence::setSeq(seq);
+	}	
 }
 
 Sequence::Sequence(Value &_V) : V(_V)

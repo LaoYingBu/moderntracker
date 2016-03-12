@@ -532,16 +532,8 @@ int main(int argc, char **argv)
 		expr->edit(argv[i], argv[i + 1]);
 		cout << "Edit param " << argv[i] << " = " << argv[i + 1] << endl;
 	}
-	if (strcmp(argv[argc - 1], "-preload") == 0) {
-		cout << "Preloading images with " << expr->resolution_width << "x" << expr->resolution_height << endl;
-		Sequence *seq = NULL;
-		while ((seq = Sequence::getSeq()) != NULL) {
-			seq->loadImage();
-			Sequence::setSeq(seq);			
-		}
-		Sequence::root.clear();
-		cout << "Preloading finish" << endl;
-	}
+	if (strcmp(argv[argc - 1], "-preload") == 0)
+		Sequence::preload();					
 	run_benchmark();
 	delete expr;
 
