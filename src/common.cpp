@@ -290,7 +290,7 @@ void Sequence::loadImage()
 			imwrite(ss.str(), t);
 		}
 		else 
-			t = imread(ss.str(), 0);		
+			t = imread(ss.str(), 0);	
 		grays.push_back(t);		
 	}
 }

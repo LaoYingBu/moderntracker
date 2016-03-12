@@ -122,7 +122,7 @@ extern Expr *expr;
 
 class Sequence
 {
-public:
+public:	
 	static mutex M_sequence;
 	static Reader reader;
 	static Value root;
