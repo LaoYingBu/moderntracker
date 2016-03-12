@@ -116,7 +116,7 @@ namespace benchmark
 				if (fart->is_fast)
 					st.fast_track(fart->final_choice, gt, far2cv(fart->fast_start));
 				if (fart->is_detect)
-					st.detect_track(fart->final_choice, gt, far2cv(fart->fast_start));
+					st.detect_track(fart->final_choice, gt, far2cv(fart->detect_start));
 				else
 				if (i == last_detect)
 					st.detect_track(fart->final_choice, gt, Rect2f(0.0f, 0.0f, 0.0f, 0.0f));

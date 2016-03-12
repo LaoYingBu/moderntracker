@@ -512,11 +512,11 @@ far_rect_t ExprTracker::retrack(const unsigned char *gray, const vector<far_rect
 	w2.sett(fast_test(warp));	
 	if (log != NULL)
 		(*log) << "search at " << w2.t.transpose() << " " << window(w2.t) << endl;
-	is_fast = true; fast_start = window(w2.t); // add for expr
+	//is_fast = true; fast_start = window(w2.t); // add for expr
 	w2 = fine_test(w2);	
 	float e2 = evaluate(w2);
 	if (e2 < e) {
-		final_choice = 2; // add for expr
+		//final_choice = 2; // add for expr
 		w = w2;
 		e = e2;
 	}
