@@ -45,19 +45,43 @@ using namespace Eigen;
 
 const float PI_2 = acos(-1.0f) * 0.5f;
 
-const int cell_min = 2;
+#ifdef __front
+//prefer 320x180 30fps
+const int cell_min = 1;
+const int fast_n = 16;
+const int fast_step = 4;
+const int fine_n = 81;
+const int cell_n = 81;
+const int fine_steps[] = { 60, 20, 5, 1 };
+const int detect_interval = 20;
+const int max_iteration = 4;
+const float padding = 1.6f;
+const float sigmoid_factor = 7.141f;
+const float sigmoid_bias = 0.482f;
+const float translate_eps = 1.0f;
+const float error_eps = 0.01f;
+const float fine_threshold = 0.4f;
+const float fast_threshold = 0.6f;
+const float detect_threshold = 0.6f;
+#else
+//prefer 640x360 15fps
+const int cell_min = 1;
 const int fast_n = 25;
 const int fast_step = 2;
-const int fine_n = 600;
+const int fine_n = 625;
 const int cell_n = 150;
 const int fine_steps[] = { 27, 9, 3, 1 };
+const int detect_interval = 10;
 const int max_iteration = 9;
 const float padding = 1.6f;
 const float sigmoid_factor = 7.141f;
 const float sigmoid_bias = 0.482f;
-const float translate_eps = 0.1f;
+const float translate_eps = 0.005f;
 const float error_eps = 0.001f;
-const float threshold_error = 0.4f;
+const float fine_threshold = 0.4f;
+const float fast_threshold = 0.4f;
+const float detect_threshold = 0.4f;
+#endif /* __front */
 
 typedef Matrix<float, 8, 1> Vector8f;
 typedef Matrix<float, 32, 1> Vector32f;

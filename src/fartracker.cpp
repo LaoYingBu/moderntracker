@@ -492,7 +492,7 @@ far_rect_t FARTracker::track(const unsigned char *gray)
 		(*log) << "track at " << w.t.transpose() << " " << window(w.t) << endl;
 	w = fine_test(w);
 	float e = evaluate(w);
-	if (e > threshold_error) {
+	if (e > fast_threshold) {
 		Warp w2 = warp;
 		w2.sett(fast_test(warp));
 		if (log != NULL)
@@ -558,7 +558,7 @@ bool FARTracker::check()
 	float s = 0.0f;
 	for (auto e : fine_errors)
 		s += e;
-	return s / fine_errors.size() < threshold_error;
+	return s / fine_errors.size() < detect_threshold;
 }
 
 Vector3f FARTracker::locate(far_rect_t rect)
@@ -589,7 +589,7 @@ void FARTracker::update(Warp w, float e)
 		(*log) << "final error = " << e << endl;
 	}
 	error = e;
-	if (e < threshold_error) {
+	if (e < fine_threshold) {
 		warp = w;
 		warp.euler(roll, yaw, pitch);
 		fine_train(warp);
@@ -598,7 +598,7 @@ void FARTracker::update(Warp w, float e)
 		warp.t = w.t * (warp.t.z() / w.t.z());
 	fast_train(warp);
 	fine_errors.push_back(e);
-	while (fine_errors.size() > 10)
+	while (fine_errors.size() > detect_interval)
 		fine_errors.pop_front();
 }
 
