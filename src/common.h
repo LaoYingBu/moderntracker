@@ -21,104 +21,38 @@ using namespace std;
 #ifdef __linux
 #include <unistd.h>
 #include <sys/stat.h> 
+#else
+#include <io.h>
+#include <direct.h>
+#endif /* __linux */
+
+//requires opencv3 or higher
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/objdetect/objdetect.hpp>
-#else
-#include <io.h>
-#include <direct.h>
-#include <opencv2/world.hpp>
-#include <opencv2/highgui.hpp>
-#include <opencv2/imgproc.hpp>
-#include <opencv2/objdetect.hpp>
-#endif /* __linux */
-
 using namespace cv;
-
-#ifndef Recf2f
-#define Rect2f Rect_<float>
-#endif  /* Rect2f */
 
 #include "json.h"
 using namespace Json;
 
+const string dir_benchmark = "D:/face tracking/benchmark/";
+const string dir_data = dir_benchmark + "data/";
+const string dir_image = dir_benchmark + "image/";
+const string path_groundtruth = dir_data + "groundtruth.json";
+const string detector_model = "./haarcascade_frontalface_default.xml";
+const int detector_frequence = 10;
+const string dir_log = "./log/";
+const string path_result = dir_log + "result.json";
+const int resolution_width = 640, resolution_height = 360;
+
+#include "mt.h"
+rect_t cv2mt(Rect2f rect);
+Rect2f mt2cv(rect_t rect);
+
 void mkdir(string dir);
 float overlap(Rect2f a, Rect2f b);
-
-class Expr
-{
-public:
-	Expr();
-	void load(string path_configuration);
-	string save();
-	void edit(string param, string value);
-
-private:
-	void load();
-
-public:
-	//base configuration without modification
-	string base_configuration;
-
-	//make sure /data and /image are under this directory
-	string dir_benchmark;
-	string dir_data, dir_image, path_groundtruth;
-
-	//path_log contatins the global statistics information	
-	string path_log;
-	//path_result contains the final rectangle output, use empty string to discard
-	string path_result;
-	//dir_detail contatins the log for each sequence, use empty string to discard
-	string dir_detail;
-
-	//number of threads, do not exceed the number of cores	
-	int nThreads;
-	//width and height can exchange, suggest 1280x720, 640x360 and 320x180
-	int resolution_width, resolution_height;
-
-	//only support Opencv pre-trained model		
-	string detector_model;
-	//The tracker call the detector if the average error over the last interval frames is lower than threshold	
-	//If nothing detected, it will call the detector again after frequence frames
-	float detector_threshold;
-	int detector_interval, detector_frequence;	
-
-	//fast template contatins about fast_n features	
-	int fast_n;
-	//the fast template moves at fast_step pixels
-	int fast_step;
-	//the search area of fast template is (1 + padding) * area_of_face
-	float fast_padding;
-	//when error is lower than threshold, carry out fast search
-	float fast_threshold;
-
-	//fine template contatins about fine_n features
-	int fine_n;	
-	//steps of multi-scale Lucas-Kanade, in decreasing order
-	int fine_steps[4];
-	//if the error is lower than threshold, update the fine model
-	float fine_threshold;
-
-	//each SURF feature is 4 cells, each cell is (2*cell_min)x(2*cell_min)	
-	int cell_min;
-	//each cell covers (area_of_face / cell_n) pixels
-	int cell_n;
-
-	//number of iteration of each scale
-	int iteration_max;
-	//termination condition of iteration
-	float iteration_translate_eps, iteration_error_eps;
-
-	//parameters of sigmoid
-	float sigmoid_factor, sigmoid_bias;	
-
-private:
-	Reader reader;
-	Value root;
-};
-
-extern Expr *expr;
+void detect(CascadeClassifier &detector, Mat gray, vector<Rect2f> &rects);
 
 class Sequence
 {
@@ -129,8 +63,7 @@ public:
 	static vector<int> perm;
 	static vector<int>::iterator perm_iter;
 
-public:
-	static void preload();
+public:	
 	static Sequence* getSeq();
 	static void setSeq(Sequence* seq);	
 
@@ -174,19 +107,13 @@ public:
 	void toc();
 
 	bool empty();
-	void track(Rect2f gt, Rect2f result, bool success, int number_MLK, int number_iteration);
-	void fine_track(int choice, Rect2f gt, Rect2f start);
-	void fast_track(int choice, Rect2f gt, Rect2f start);
-	void detect_track(int choice, Rect2f gt, Rect2f start);
+	void track(Rect2f gt, Rect2f result, bool success, int nDetect, int nCoarse, int nMLK, int nIteration);
 
 private:
 	int nSeq, nFrame, nClear, nUnclear;
 	int n50, n80, nSuccess, nFail;
-	int nMLK, nIteration;
-	int nFine, nFineClear, nFineUnclear, nFine50, nFineChoice;
-	int nFast, nFastClear, nFastUnclear, nFast50, nFastChoice;
-	int nDetect, nDetectClear, nDetectUnclear, nDetect50, nDetectChoice;	
-	double scores, scoresFine, scoresFast, scoresDetect, secs;
+	int nDetect, nCoarse, nMLK, nIteration;
+	double scores, secs;
 	double start_clock, end_clock;
 };
 

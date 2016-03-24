@@ -1,49 +1,16 @@
 #include "common.h"
-#include "exprtracker.h"
 
 namespace benchmark
 {		
+	const string path_log = dir_log + "benchmark.txt";
+
 	mutex M_global;
 	Statistics global_short(false), global_long(false), global_whole(false);
 	ofstream global_log;
 
-	far_rect_t cv2far(Rect2f rect)
-	{
-		far_rect_t _rect;
-		_rect.x = rect.x;
-		_rect.y = rect.y;
-		_rect.width = rect.width;
-		_rect.height = rect.height;
-		return _rect;
-	}
-
-	Rect2f far2cv(far_rect_t rect)
-	{
-		Rect2f _rect;
-		_rect.x = rect.x;
-		_rect.y = rect.y;
-		_rect.width = rect.width;
-		_rect.height = rect.height;
-		return _rect;		
-	}
-
-	void detect(CascadeClassifier &detector, Mat gray, vector<Rect2f> &rects)
-	{		
-		vector<Rect> faces;
-		detector.detectMultiScale(gray, faces);
-		rects.clear();
-		for (auto& r : faces) {
-			float w = 0.78f * r.width;
-			float h = 0.78f * r.height;
-			float x = r.x + r.width * 0.5f - w * 0.5f;
-			float y = r.y + r.height * 0.55f - h * 0.5f;
-			rects.push_back(Rect2f(x, y, w, h));
-		}		
-	}
-
 	void invoker(int threadID)
 	{		
-		CascadeClassifier detector(expr->detector_model);
+		CascadeClassifier detector(detector_model);
 		Sequence *seq = NULL;		
 		int cnt = 0;
 		while ((seq = Sequence::getSeq()) != NULL) {									
@@ -52,11 +19,11 @@ namespace benchmark
 			ss << "(" << seq->getStart() << "-" << seq->getEnd() << ")";
 			ss << seq->getWidth() << "x" << seq->getHeight();
 			string alias = ss.str();
-			bool verbose = !expr->dir_detail.empty();
+			bool verbose = !dir_log.empty();
 
 			ofstream log;
 			if (verbose) {
-				log.open(expr->dir_detail + alias + ".txt");
+				log.open(dir_log + alias + ".txt");
 				log << alias << endl;
 			}
 			M_global.lock();
@@ -64,7 +31,7 @@ namespace benchmark
 			M_global.unlock();
 			
 			seq->loadImage();
-			ExprTracker *fart = NULL;
+			MT *mt = NULL;
 			int last_detect = 0;						
 
 			Statistics st(true);
@@ -78,26 +45,26 @@ namespace benchmark
 				Rect2f gt = seq->getRect(i), result;
 				vector<Rect2f> detections;
 
-				if (fart == NULL) {
+				if (mt == NULL) {
 					result = gt;			
-					fart = new ExprTracker(gray.data, gray.cols, gray.rows, cv2far(result), verbose ? &log : NULL);
+					mt = new MT(gray.data, gray.cols, gray.rows, cv2mt(result), verbose ? &log : NULL);
 				}
 				else {					
-					if (!fart->check() && i - last_detect >= expr->detector_frequence) {
+					if (!mt->check() && i - last_detect >= detector_frequence) {
 						detect(detector, gray, detections);	
 						last_detect = i;
 					}										
 					if (detections.empty()) 
-						result = far2cv(fart->track(gray.data));
+						result = mt2cv(mt->track(gray.data));
 					else {
-						vector<far_rect_t> far_detections;
+						vector<rect_t> mt_detections;
 						for (auto d : detections)
-							far_detections.push_back(cv2far(d));
-						result = far2cv(fart->retrack(gray.data, far_detections));
+							mt_detections.push_back(cv2mt(d));
+						result = mt2cv(mt->retrack(gray.data, mt_detections));
 					}
 				}				
 
-				float error = fart->error;
+				float error = mt->error;
 				if (verbose) {
 					log << "result : " << Rect(int(result.x), int(result.y), int(result.width), int(result.height)) << endl;
 					if (seq->getClear(i))
@@ -110,18 +77,9 @@ namespace benchmark
 							log << "Wrong!!!" << endl;
 					}
 				}
-				st.track(gt, result, error < expr->fine_threshold, fart->number_MLK, fart->number_iteration);
-				if (fart->is_fine)
-					st.fine_track(fart->final_choice, gt, far2cv(fart->fine_start));
-				if (fart->is_fast)
-					st.fast_track(fart->final_choice, gt, far2cv(fart->fast_start));
-				if (fart->is_detect)
-					st.detect_track(fart->final_choice, gt, far2cv(fart->detect_start));
-				else
-				if (i == last_detect)
-					st.detect_track(fart->final_choice, gt, Rect2f(0.0f, 0.0f, 0.0f, 0.0f));
+				st.track(gt, result, error < fine_threshold, last_detect == i, mt->number_coarse, mt->number_MLK, mt->number_iteration);
 				seq->setRect(i, result);
-			}
+			}			
 			st.toc();
 			if (verbose) {
 				log << endl << st << endl;
@@ -144,22 +102,20 @@ namespace benchmark
 			}
 			M_global.unlock();
 
-			delete fart;
+			delete mt;
 			Sequence::setSeq(seq);
 		}
 	}
 
 	void main()
 	{		
-		if (!expr->dir_detail.empty())
-			mkdir(expr->dir_detail);
-		global_log.open(expr->path_log);
-		global_log << "Base configuration : " << expr->base_configuration << endl;
-		global_log << expr->save() << endl << endl;
+		if (!dir_log.empty())
+			mkdir(dir_log);
+		global_log.open(path_log);		
 
 		setNumThreads(0);
 		vector<thread> ths;
-		for (int i = 0; i < expr->nThreads; ++i)
+		for (int i = 0; i < 3; ++i)
 			ths.push_back(thread(&invoker, i));
 		for (auto& th : ths)
 			th.join();
@@ -180,6 +136,6 @@ namespace benchmark
 
 void run_benchmark()
 {	
-	cout << "Run benchmark with " << expr->nThreads << " threads" << endl;
+	cout << "Run benchmark" << endl;
 	benchmark::main();
 }

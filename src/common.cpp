@@ -1,5 +1,25 @@
 #include "common.h"
 
+rect_t cv2mt(Rect2f rect)
+{
+	rect_t _rect;
+	_rect.x = rect.x;
+	_rect.y = rect.y;
+	_rect.width = rect.width;
+	_rect.height = rect.height;
+	return _rect;
+}
+
+Rect2f mt2cv(rect_t rect)
+{
+	Rect2f _rect;
+	_rect.x = rect.x;
+	_rect.y = rect.y;
+	_rect.width = rect.width;
+	_rect.height = rect.height;
+	return _rect;
+}
+
 void mkdir(string dir)
 {
 #ifdef __linux
@@ -21,144 +41,19 @@ float overlap(Rect2f a, Rect2f b)
 	return s / (a.area() + b.area() - s);
 }
 
-Expr::Expr()
+void detect(CascadeClassifier &detector, Mat gray, vector<Rect2f> &rects)
 {
-	base_configuration = "Baseline configuration";
-
-	const string document = 	
-		string("{") +
-		string("	\"dir_benchmark\" : \"D:/face tracking/benchmark/\",") +
-		string("	\"groundtruth\" : \"groundtruth.json\",") +
-		string("	\"path_log\" : \"./benchmark/log_baseline.txt\",") +
-		string("	\"path_result\" : \"\",") +
-		string("	\"dir_detail\" : \"\",") +
-		string("		") +
-		string("	\"nThreads\" : 1,			") +
-		string("	\"resolution\" : ") +
-		string("	{") +
-		string("		\"width\" : 640,") +
-		string("		\"height\" : 360") +
-		string("	},	") +
-		string("	") +
-		string("	\"detector\" :") +
-		string("	{") +
-		string("		\"model\" : \"./common/haarcascade_frontalface_default.xml\",") +
-		string("		\"threshold\" : 0.4,") +
-		string("		\"interval\" : 10,") +
-		string("		\"frequence\" : 30") +
-		string("	},") +
-		string("	") +
-		string("	\"fast\":") +
-		string("	{") +
-		string("		\"n\" : 25,") +
-		string("		\"step\" : 2,") +
-		string("		\"padding\" : 1.6,") +
-		string("		\"threshold\" : 0.4") +
-		string("	},") +
-		string("	") +
-		string("	\"fine\":") +
-		string("	{") +
-		string("		\"n\" : 600,") +
-		string("		\"steps\" : [27, 9, 3, 1],") +
-		string("		\"threshold\" : 0.4") +
-		string("	},") +
-		string("	") +
-		string("	\"cell\":") +
-		string("	{") +
-		string("		\"min\" : 2,") +
-		string("		\"n\" : 150") +
-		string("	},") +
-		string("	") +
-		string("	\"iteration\":") +
-		string("	{") +
-		string("		\"max\" : 9,") +
-		string("		\"translate_eps\" : 0.1,") +
-		string("		\"error_eps\" : 0.001") +
-		string("	},") +
-		string("	") +
-		string("	\"sigmoid\":") +
-		string("	{") +
-		string("		\"factor\" : 7.141,") +
-		string("		\"bias\" : 0.482") +
-		string("	}") +
-		string("}");
-
-	Reader reader;
-	reader.parse(document, root);
-	load();
+	vector<Rect> faces;
+	detector.detectMultiScale(gray, faces, 1.1, 5);
+	rects.clear();
+	for (auto& r : faces) {
+		float w = 0.78f * r.width;
+		float h = 0.78f * r.height;
+		float x = r.x + r.width * 0.5f - w * 0.5f;
+		float y = r.y + r.height * 0.55f - h * 0.5f;
+		rects.push_back(Rect2f(x, y, w, h));
+	}
 }
-
-void Expr::load(string path_configuration)
-{
-	base_configuration = path_configuration;
-	ifstream fin(path_configuration);
-	reader.parse(fin, root);
-	fin.close();
-	load();
-}
-
-string Expr::save()
-{
-	return StyledWriter().write(root);
-}
-
-void Expr::edit(string param, string value)
-{
-	auto pos = param.find_first_of('-');
-	Value newValue;
-	reader.parse(value, newValue);
-	if (pos != string::npos)
-		root[param.substr(0, pos)][param.substr(pos + 1)] = newValue;
-	else
-		root[param] = newValue;
-	root["path_log"] = path_log.substr(0, path_log.size() - 4) + "_(" + param + "=" + value + ").txt";
-	load();
-}
-
-void Expr::load()
-{
-	dir_benchmark = root["dir_benchmark"].asString();
-	dir_data = dir_benchmark + "data/";
-	dir_image = dir_benchmark + "image/";
-	path_groundtruth = dir_data + root["groundtruth"].asString();
-
-	path_log = root["path_log"].asString();
-	path_result = root["path_result"].asString();
-	dir_detail = root["dir_detail"].asString();
-
-	nThreads = root["nThreads"].asInt();
-	resolution_width = root["resolution"]["width"].asInt();
-	resolution_height = root["resolution"]["height"].asInt();
-
-	detector_model = root["detector"]["model"].asString();
-	detector_threshold = root["detector"]["threshold"].asFloat();
-	detector_interval = root["detector"]["interval"].asInt();
-	detector_frequence = root["detector"]["frequence"].asInt();
-
-	fast_n = root["fast"]["n"].asInt();
-	fast_step = root["fast"]["step"].asInt();
-	fast_padding = root["fast"]["padding"].asFloat();
-	fast_threshold = root["fast"]["threshold"].asFloat();
-
-	fine_n = root["fine"]["n"].asInt();
-	fine_steps[0] = root["fine"]["steps"][0].asInt();
-	fine_steps[1] = root["fine"]["steps"][1].asInt();
-	fine_steps[2] = root["fine"]["steps"][2].asInt();
-	fine_steps[3] = root["fine"]["steps"][3].asInt();
-	fine_threshold = root["fine"]["threshold"].asFloat();
-
-	cell_min = root["cell"]["min"].asInt();;
-	cell_n = root["cell"]["n"].asInt();;
-
-	iteration_max = root["iteration"]["max"].asInt();
-	iteration_translate_eps = root["iteration"]["translate_eps"].asFloat();
-	iteration_error_eps = root["iteration"]["error_eps"].asFloat();
-
-	sigmoid_factor = root["sigmoid"]["factor"].asFloat();
-	sigmoid_bias = root["sigmoid"]["bias"].asFloat();
-}
-
-Expr *expr = NULL;
 
 mutex Sequence::M_sequence;
 Reader Sequence::reader;
@@ -166,23 +61,11 @@ Value Sequence::root;
 vector<int> Sequence::perm;
 vector<int>::iterator Sequence::perm_iter;
 
-void Sequence::preload()
-{
-	cout << "Preloading " << expr->resolution_width << "x" << expr->resolution_height << " images with " << expr->nThreads << " threads" << endl;
-	vector<thread> ths;
-	for (int i = 0; i < expr->nThreads; ++i)
-		ths.push_back(thread(&Sequence::invoker));
-	for (auto& th : ths)
-		th.join();
-	Sequence::root.clear();
-	cout << "Preloading finish" << endl;
-}
-
 Sequence* Sequence::getSeq()
 {
 	M_sequence.lock();
 	if (root.empty()) {
-		ifstream fin(expr->path_groundtruth);
+		ifstream fin(path_groundtruth);
 		reader.parse(fin, root);
 		fin.close();
 		perm.resize(root.size());
@@ -198,8 +81,8 @@ Sequence* Sequence::getSeq()
 		++perm_iter;
 	}
 	else {		
-		if (!expr->path_result.empty()) {
-			ofstream fout(expr->path_result);
+		if (!path_result.empty()) {
+			ofstream fout(path_result);
 			fout << StyledWriter().write(root) << endl;
 			fout.close();
 		}
@@ -242,7 +125,7 @@ Sequence::Sequence(Value &_V) : V(_V)
 	width = V["width"].asInt();
 	height = V["height"].asInt();
 	type = V["type"].asString();
-	image_scale = sqrt(float(expr->resolution_width * expr->resolution_height) / float(width * height));
+	image_scale = sqrt(float(resolution_width * resolution_height) / float(width * height));
 	if (image_scale > 1.0f)
 		image_scale = 1.0f;
 
@@ -293,7 +176,7 @@ void Sequence::loadImage()
 	for (int i = start_frame; i <= end_frame; ++i) {
 		Mat t;
 		stringstream ss;
-		ss << expr->dir_image << name << "/";
+		ss << dir_image << name << "/";
 		ss.width(4);
 		ss.fill('0');
 		ss << i << "_" << getWidth() << "x" << getHeight() << ".jpg";		
@@ -303,17 +186,17 @@ void Sequence::loadImage()
 		if (_access(ss.str().c_str(), 0) == -1) {
 #endif // __linux
 			stringstream ss2;
-			ss2 << expr->dir_image << name << "/";
+			ss2 << dir_image << name << "/";
 			ss2.width(4);
 			ss2.fill('0');
 			ss2 << i << ".jpg";
 			Mat gray = imread(ss2.str(), 0);
 			resize(gray, t, Size(getWidth(), getHeight()));			
-			imwrite(ss.str(), t);
+			//imwrite(ss.str(), t);
 		}
 		else 
 			t = imread(ss.str(), 0);	
-		grays.push_back(t);		
+		grays.push_back(t);
 	}
 }
 
@@ -353,22 +236,19 @@ Statistics::Statistics(bool isSeq)
 	nSeq = int(isSeq);
 	nFrame = nClear = nUnclear = 0;
 	n50 = n80 = nSuccess = nFail = 0;
-	nMLK = nIteration = 0;
-	nFine = nFineClear = nFineUnclear = nFine50 = nFineChoice = 0;
-	nFast = nFastClear = nFastUnclear = nFast50 = nFastChoice = 0;
-	nDetect = nDetectClear = nDetectUnclear = nDetect50 = nDetectChoice = 0;
-	scores = scoresFine = scoresFast = scoresDetect = secs = 0.0;	
+	nDetect = nCoarse = nMLK = nIteration = 0;
+	scores = secs = 0.0;	
 	start_clock = end_clock = 0.0;
 }
 
 void Statistics::tic()
 {
-	start_clock = getTickCount();
+	start_clock = double(getTickCount());
 }
 
 void Statistics::toc()
 {
-	end_clock = getTickCount();
+	end_clock = double(getTickCount());
 	secs = (end_clock - start_clock) / getTickFrequency();
 }
 
@@ -377,7 +257,7 @@ bool Statistics::empty()
 	return nSeq == 0;
 }
 
-void Statistics::track(Rect2f gt, Rect2f result, bool success, int number_MLK, int number_iteration)
+void Statistics::track(Rect2f gt, Rect2f result, bool success, int nDetect, int nCoarse, int nMLK, int nIteration)
 {
 	++nFrame;
 	if (gt.area() > 0) {
@@ -391,57 +271,11 @@ void Statistics::track(Rect2f gt, Rect2f result, bool success, int number_MLK, i
 		++(success ? nSuccess : nFail);
 	}
 	else
-		++nUnclear;
-	nMLK += number_MLK;
-	nIteration += number_iteration;
-}
-
-void Statistics::fine_track(int choice, Rect2f gt, Rect2f start)
-{
-	++nFine;
-	if (gt.area() > 0) {
-		++nFineClear;
-		float score = overlap(gt, start);
-		if (score >= 0.5f)
-			++nFine50;
-		scoresFine += score;
-		if (choice == 1)
-			++nFineChoice;
-	}
-	else
-		++nFineUnclear;	
-}
-
-void Statistics::fast_track(int choice, Rect2f gt, Rect2f start)
-{
-	++nFast;
-	if (gt.area() > 0) {
-		++nFastClear;
-		float score = overlap(gt, start);
-		if (score >= 0.5f)
-			++nFast50;
-		scoresFast += score;
-		if (choice == 2)
-			++nFastChoice;
-	}
-	else
-		++nFastUnclear;
-}
-
-void Statistics::detect_track(int choice, Rect2f gt, Rect2f start)
-{
-	++nDetect;
-	if (gt.area() > 0) {
-		++nDetectClear;
-		float score = overlap(gt, start);
-		if (score >= 0.5f)
-			++nDetect50;
-		scoresDetect += score;
-		if (choice == 3)
-			++nDetectChoice;
-	}
-	else
-		++nDetectUnclear;
+		++nUnclear;	
+	this->nDetect += nDetect;
+	this->nCoarse += nCoarse;
+	this->nMLK += nMLK;
+	this->nIteration += nIteration;
 }
 
 ostream& operator<<(ostream& cout, const Statistics &st)
@@ -450,13 +284,12 @@ ostream& operator<<(ostream& cout, const Statistics &st)
 	double p80 = double(st.n80) / double(st.nClear) * 100;
 	double pSuccess = double(st.nSuccess) / double(st.nClear) * 100;
 	double pFail = double(st.nFail) / double(st.nClear) * 100;
+	double pDetect = double(st.nDetect) / double(st.nFrame) * 100;
+	double pCoarse = double(st.nCoarse) / double(st.nFrame) * 100;
 	double avgMLK = double(st.nMLK) / double(st.nFrame);
 	double avgIteration = double(st.nIteration) / double(st.nFrame);
 	double avgIteration2 = double(st.nIteration) / double(st.nMLK);
-	double avg = st.scores / max(st.nClear, 1);
-	double avgFine = st.scoresFine / max(st.nFineClear, 1);
-	double avgFast = st.scoresFast / max(st.nFastClear, 1);
-	double avgDetect = st.scoresDetect / max(st.nDetectClear, 1);
+	double avg = st.scores / max(st.nClear, 1);	
 	if (st.nSeq > 1)
 		cout << st.nSeq << " sequence(s) : " << endl;
 	cout << "Clear / Total : " << st.nClear << "/" << st.nFrame << endl;
@@ -465,14 +298,10 @@ ostream& operator<<(ostream& cout, const Statistics &st)
 	cout << "Success / Clear : " << st.nSuccess << "/" << st.nClear << "(" << pSuccess << "%)" << endl;
 	cout << "Fail / Clear : " << st.nFail << "/" << st.nClear << "(" << pFail << "%)" << endl;	
 	cout << "Average tracking overlap ratio : " << avg << endl;
+	cout << "Re-detection / Total " << st.nDetect << "/" << st.nFrame << "(" << pDetect << "%)" << endl;
+	cout << "Coarse search / Total : " << st.nCoarse << "/" << st.nFrame << "(" << pCoarse << "%)" << endl;
 	cout << "Number of multi-scale Lucas-Kanade / Total : " << st.nMLK << "/" << st.nFrame << "(" << avgMLK << " every frame)" << endl;
-	cout << "Number of iterations / Total : " << st.nIteration << "/" << st.nFrame << "(" << avgIteration << " every frame, " << avgIteration2 << " every MLK)" << endl;
-	cout << "Initial times (Fine Fast Detect) " << st.nFine << " " << st.nFast << " " << st.nDetect << endl;
-	cout << "Initial overlap ratio (Fine Fast Detect) : " << avgFine << " " << avgFast << " " << avgDetect << endl;
-	cout << "Final choice (Fine Fast Detect) : " << st.nFineChoice << " " << st.nFastChoice << " " << st.nDetectChoice << endl;	
-	cout << "Fine initial (Good Bad Unclear) : " << st.nFine50 << " " << st.nFineClear - st.nFine50 << " " << st.nFineUnclear << endl;
-	cout << "Fast initial (Good Bad Unclear) : " << st.nFast50 << " " << st.nFastClear - st.nFast50 << " " << st.nFastUnclear << endl;
-	cout << "Detect initial (Good Bad Unclear) : " << st.nDetect50 << " " << st.nDetectClear - st.nDetect50 << " " << st.nDetectUnclear << endl;			
+	cout << "Number of iterations / Total : " << st.nIteration << "/" << st.nFrame << "(" << avgIteration << " every frame, " << avgIteration2 << " every MLK)" << endl;	
 	cout << "Millisecond per frame : " << st.secs * 1000 / st.nFrame << endl;
 	return cout;
 }
@@ -487,27 +316,11 @@ Statistics& operator+=(Statistics& st, const Statistics &opt)
 	st.n80 += opt.n80;
 	st.nSuccess += opt.nSuccess;
 	st.nFail += opt.nFail;
-	st.nMLK += opt.nMLK;
-	st.nIteration += opt.nIteration;
-	st.nFine += opt.nFine;
-	st.nFineClear += opt.nFineClear;
-	st.nFineUnclear += opt.nFineUnclear;
-	st.nFine50 += opt.nFine50;
-	st.nFineChoice += opt.nFineChoice;
-	st.nFast += opt.nFast;
-	st.nFastClear += opt.nFastClear;
-	st.nFastUnclear += opt.nFastUnclear;
-	st.nFast50 += opt.nFast50;
-	st.nFastChoice += opt.nFastChoice;
 	st.nDetect += opt.nDetect;
-	st.nDetectClear += opt.nDetectClear;
-	st.nDetectUnclear += opt.nDetectUnclear;
-	st.nDetect50 += opt.nDetect50;
-	st.nDetectChoice += opt.nDetectChoice;
-	st.scores += opt.scores;
-	st.scoresFine += opt.scoresFine;
-	st.scoresFast += opt.scoresFast;
-	st.scoresDetect += opt.scoresDetect;
+	st.nCoarse += opt.nCoarse;
+	st.nMLK += opt.nMLK;
+	st.nIteration += opt.nIteration;	
+	st.scores += opt.scores;	
 	st.secs += opt.secs;
 	return st;
 }
