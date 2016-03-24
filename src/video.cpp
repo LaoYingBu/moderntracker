@@ -4,8 +4,10 @@ namespace video {
 	const string title = "Face Tracking -- Mo Tao";	
 	const string path_log = dir_log + "video.txt";
 
-	void main(VideoCapture &reader)
+	void main(string path)
 	{				
+		VideoCapture reader = path == "camera" ? VideoCapture(0) : VideoCapture(path);
+
 		if (!dir_log.empty())
 			mkdir(dir_log);
 		ofstream flog(path_log);
@@ -28,7 +30,9 @@ namespace video {
 		MT *mt = NULL;
 		Rect2f rect;		
 		
-		while (reader.read(raw)) {			
+		while (reader.read(raw)) {
+			if (path == "camera")
+				flip(raw, raw, 1);
 			++idx;
 			flog << "Frame " << idx << endl;
 			if (raw.cols != width || raw.rows != height)
@@ -75,7 +79,7 @@ namespace video {
 			putText(img, ss.str(), Point(0, 15), FONT_HERSHEY_SIMPLEX, 0.5 , Scalar(0, 0, 255));
 			if (mt != NULL) {
 				ss.str("");
-				ss << "error: " << mt->error * 90 / PI_2;
+				ss << "error: " << mt->error;
 				putText(img, ss.str(), Point(0, 30), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255));				
 				ss.str("");
 				ss << "roll: " << mt->roll * 90 / PI_2;
@@ -94,20 +98,21 @@ namespace video {
 				for (int i = 0; i < 4; ++i)
 					line(img, p[i], p[(i + 1) % 4], Scalar(0, 0, 255), 3);
 			}
-			imshow(title, img);			
-			waitKey(1);
+			imshow(title, img);
+			waitKey(path != "camera" ? 1 : 10);
 		}
+
+		reader.release();
+		if (mt != NULL)
+			delete mt;
 	}
 }
 
 void run_video(string path)
 {
-	if (path == "camera") {
+	if (path == "camera") 
 		cout << "Run camera tracking" << endl;
-		video::main(VideoCapture(0));
-	}
-	else {
+	else 
 		cout << "Run video tracking on " << path << endl;
-		video::main(VideoCapture(path));
-	}
+	video::main(path);
 }
