@@ -1,14 +1,6 @@
 #ifndef mt_h
 #define mt_h
 
-//a simple rectangle class
-typedef struct rect_t {
-	float x;
-	float y;
-	float width;
-	float height;
-} rect_t;
-
 #include <iostream>
 #include <vector>
 #include <queue>
@@ -76,13 +68,23 @@ const float error_eps = 0.001f;
 const float sigmoid_factor = 7.141f;
 const float sigmoid_bias = 0.482f;
 
+//types for Surf
 typedef Matrix<float, 8, 1> Vector8f;
 typedef Matrix<float, 32, 1> Vector32f;
 
+//a simple rectangle class
+typedef struct rect_t {
+	float x;
+	float y;
+	float width;
+	float height;
+} rect_t;
+//related tools
 float rectArea(rect_t rect);
 float rectOverlap(rect_t a, rect_t b);
 ostream& operator<<(ostream& cout, const rect_t &rect);
 
+//A simple multi-channel matrix
 template<typename T, int channels>
 class Data
 {
@@ -146,16 +148,22 @@ private:
 	T* _data;
 };
 
+//Reconfigurable U-Surf
 class Surf
 {
 public:
+	//allocate storage for width * height gray image
 	Surf(int width, int height);
 
+	//rotate the image (virtually)
 	void rotate(float angle, float kernel[]);
+	//build the integral image
 	void process(const unsigned char *gray, float angle);
+	//change Surf settings
 	void set_cell(float cell);
 	void set_step(int step);
 
+private:
 	inline float* cell_hist(int x, int y);
 	inline void descriptor(float x, float y, float *f);
 	inline void gradient(float x, float y, float *f, float *dx, float *dy);
@@ -172,20 +180,30 @@ private:
 	Data<float, 8> sum, hist, zero;
 };
 
+//3D motion
 class Warp
 {
 public:
+	//set the focal length and image center
 	Warp(int width, int height);
 
+	//set rotation
 	void setr(Vector3f rotate);
+	//set translation
 	void sett(Vector3f translate);
 
+	//project 3D point to 2D coordinate
 	Vector2f project(Vector3f p);
+	//3D rigid transform
 	Vector3f transform(Vector3f p);
+	//3D rigid transform + project
 	Vector2f transform2(Vector3f p);
 
+	//(dx, dy) / (dR, dT)
 	inline Vector2f gradient(Vector3f p, Matrix<float, 2, 6> &dW);
+	//update
 	void steepest(Matrix<float, 6, 1> parameters);
+	//get eular angles
 	void euler(float &roll, float &yaw, float &pitch);
 
 public:
@@ -198,12 +216,17 @@ private:
 	Matrix3f R, Dx, Dy, Dz;
 };
 
+//The tracker
 class MT
 {
 public:
+	//init a tracker, omit os to turn off the log
 	MT(const unsigned char *gray, int width, int height, rect_t rect, ostream *os = NULL);
+	//track a new frame
 	rect_t track(const unsigned char *gray);
+	//track a new frame with the help of some detection result
 	rect_t retrack(const unsigned char *gray, const vector<rect_t> &detections);
+	//whether the face is succesfully tracked now
 	bool check();
 
 private:
