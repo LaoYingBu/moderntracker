@@ -6,6 +6,8 @@ namespace video {
 
 	void main(VideoCapture &reader)
 	{				
+		if (!dir_log.empty())
+			mkdir(dir_log);
 		ofstream flog(path_log);
 		namedWindow(title);
 		moveWindow(title, 1, 1);

@@ -1,6 +1,7 @@
 #ifndef mt_h
 #define mt_h
 
+//a simple rectangle class
 typedef struct rect_t {
 	float x;
 	float y;
@@ -22,7 +23,7 @@ using namespace Eigen;
 const float PI_2 = acos(-1.0f) * 0.5f;
 
 /*
-//prefer 320x180 30fps
+//a faster configuration
 const int cell_min = 1;
 const int fast_n = 16;
 const int fast_step = 4;
@@ -41,23 +42,39 @@ const float fast_threshold = 0.6f;
 const float detect_threshold = 0.6f;
 */
 
-//prefer 640x360 15fps
+//each SURF feature is 4 cells, each cell covers max(area_of_face / cell_n, 4 * cell_min^2) pixels
 const int cell_min = 1;
-const int fast_n = 25;
-const int fast_step = 2;
-const int fine_n = 361;
 const int cell_n = 150;
-const int fine_steps[] = { 27, 9, 3, 1 };
-const int detect_interval = 10;
-const int max_iteration = 9;
+
+//fast template contatins about fast_n features	
+const int fast_n = 25;
+//the fast template moves at fast_step pixels
+const int fast_step = 2;
+//the search area of fast template is (1 + padding) * area_of_face
 const float padding = 1.6f;
-const float sigmoid_factor = 7.141f;
-const float sigmoid_bias = 0.482f;
+//when error is lower than threshold, carry out fast search
+const float fast_threshold = 0.5f;
+
+//fine template contatins about fine_n features
+const int fine_n = 361;
+//steps of multi-scale Lucas-Kanade
+const int fine_steps[] = { 27, 9, 3, 1 };
+//if the error is lower than threshold, update the fine model
+const float fine_threshold = 0.4f;
+
+//The tracker try to call the detector if the average error over the last interval frames is lower than the threshold	
+const int detect_interval = 10;
+const float detect_threshold = 0.4f;
+
+//max number of iteration of each scale
+const int max_iteration = 9;
+//termination condition of iteration
 const float translate_eps = 0.005f;
 const float error_eps = 0.001f;
-const float fine_threshold = 0.4f;
-const float fast_threshold = 0.5f;
-const float detect_threshold = 0.4f;
+
+//sigmoid function
+const float sigmoid_factor = 7.141f;
+const float sigmoid_bias = 0.482f;
 
 typedef Matrix<float, 8, 1> Vector8f;
 typedef Matrix<float, 32, 1> Vector32f;
