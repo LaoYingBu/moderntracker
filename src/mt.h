@@ -163,7 +163,7 @@ public:
 	void set_cell(float cell);
 	void set_step(int step);
 
-private:
+	//detailed computation
 	inline float* cell_hist(int x, int y);
 	inline void descriptor(float x, float y, float *f);
 	inline void gradient(float x, float y, float *f, float *dx, float *dy);
