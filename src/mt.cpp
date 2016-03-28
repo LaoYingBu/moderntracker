@@ -40,6 +40,7 @@ zero(1, 1)
 
 void Surf::rotate(float angle, float kernel[4])
 {
+	//combine the rotation and interpolation into one kernel to save computation
 	float c = cos(angle), s = sin(angle);
 	float wx = c * (1.0f - abs(s));
 	float wy = s * (1.0f - abs(c));
@@ -56,6 +57,7 @@ void Surf::rotate(float angle, float kernel[4])
 
 void Surf::process(const unsigned char *gray, float angle)
 {
+	//add padding
 	for (int y = 0; y < img.rows; ++y) {
 		int yy = y - 1;
 		if (y == 0)
@@ -73,6 +75,7 @@ void Surf::process(const unsigned char *gray, float angle)
 	float kx[4], ky[4];
 	rotate(A, kx);
 	rotate(A + PI_2, ky);
+	//compute the integral image for the histogram of gradient
 	for (int y = 1; y <= H; ++y) {
 		float *f0 = img.ptr(y - 1);
 		float *f = img.ptr(y);
@@ -90,8 +93,10 @@ void Surf::process(const unsigned char *gray, float angle)
 			float gy = f1[0] - f0[0];
 			float gu = f1[1] - f0[-1];
 			float gv = f1[-1] - f0[1];
+			//the rotated gradient
 			float dx = kx[0] * gx + kx[1] * gy + kx[2] * gu + kx[3] * gv;
 			float dy = ky[0] * gx + ky[1] * gy + ky[2] * gu + ky[3] * gv;
+			//the optimized integral image computation
 			if (dx > 0.0f) {
 				if (dy > 0.0f) {
 					s[1] += dx;
@@ -119,7 +124,7 @@ void Surf::process(const unsigned char *gray, float angle)
 					s[4] += dy;
 					s[6] += -dy;
 				}
-			}
+			}			
 			s1[0] = s0[0] + s[0];
 			s1[1] = s0[1] + s[1];
 			s1[2] = s0[2] + s[2];
@@ -138,6 +143,7 @@ void Surf::process(const unsigned char *gray, float angle)
 
 void Surf::set_cell(float cell)
 {
+	//rotate the cells
 	cell = cell * 0.5f;
 	X[0] = -cell; Y[0] = -cell;
 	X[1] = cell; Y[1] = -cell;
@@ -159,9 +165,11 @@ void Surf::set_step(int step)
 
 float* Surf::cell_hist(int x, int y)
 {
+	//cache the histogram of gradient to save computation
 	if (x < 0 || x >= flag.cols || y < 0 || y >= flag.rows)
 		return zero.data();
 	if (flag(y, x) != C) {
+		//compute the histogram of gradient using the integral image 
 		int x0 = max(x - C, 0);
 		int x1 = min(x + C + 1, W);
 		int y0 = max(y - C, 0);
@@ -180,6 +188,7 @@ float* Surf::cell_hist(int x, int y)
 
 void Surf::descriptor(float x, float y, float *f)
 {
+	//bilinear interpolation
 	x = x / step;
 	y = y / step;
 	int ixp = (int)floor(x);
@@ -202,6 +211,7 @@ void Surf::descriptor(float x, float y, float *f)
 
 void Surf::gradient(float x, float y, float *f, float *dx, float *dy)
 {
+	//gradient based on the bilinear interpolation
 	x = x / step;
 	y = y / step;
 	int ixp = (int)floor(x);
@@ -231,8 +241,10 @@ void Surf::gradient(float x, float y, float *f, float *dx, float *dy)
 
 void Surf::descriptor4(float x, float y, float *f)
 {
+	//compute each cell
 	for (int i = 0; i < 4; ++i)
 		descriptor(x + X[i], y + Y[i], f + i * 8);
+	//normalize the descriptor to unit norm
 	float S = 0.0f;
 	for (int i = 0; i < 32; ++i)
 		S += f[i] * f[i];
@@ -243,8 +255,10 @@ void Surf::descriptor4(float x, float y, float *f)
 
 void Surf::gradient4(float x, float y, float *f, float *dx, float *dy)
 {
+	//compute each cell
 	for (int i = 0; i < 4; ++i)
 		gradient(x + X[i], y + Y[i], f + i * 8, dx + i * 8, dy + i * 8);
+	//normalize the descriptor to unit norm, and compute the gradient
 	float S = 0.0f, Sx = 0.0f, Sy = 0.0f;
 	for (int i = 0; i < 32; ++i) {
 		S += f[i] * f[i];
@@ -271,6 +285,7 @@ f(float(max(width, height)))
 
 void Warp::setr(Vector3f rotate)
 {
+	//the implementation is copied from the OpenCV function 'rodrigues'
 	r = rotate;
 	double rx = r(0), ry = r(1), rz = r(2);
 	double theta = sqrt(rx * rx + ry * ry + rz * rz);
@@ -353,7 +368,8 @@ Vector2f Warp::transform2(Vector3f p)
 }
 
 Vector2f Warp::gradient(Vector3f p, Matrix<float, 2, 6> &dW)
-{
+{	
+	//combine the gradient of the 3D rigid motion and projection
 	Matrix3f D1 = p.x() * Dx + p.y() * Dy + p.z() * Dz;
 	Vector3f tp = transform(p);
 	float fz = f / tp.z(), fzz = f / (tp.z() * tp.z());
@@ -381,6 +397,7 @@ void Warp::steepest(Matrix<float, 6, 1> parameters)
 
 void Warp::euler(float &roll, float &yaw, float &pitch)
 {
+	//see the definition of euler angle in wiki
 	if (abs(1 - abs(R(2, 1))) > 1.0e-7f) {
 		roll = atan2(-R(0, 1), R(1, 1));
 		yaw = atan2(-R(2, 0), R(2, 2));
@@ -400,6 +417,7 @@ warp(width, height),
 feature(width, height),
 log(os)
 {
+	//build the fine template on uniform grid
 	warp.sett(locate(rect));
 	float fine_stride = sqrt(window_width * window_height / fine_n);
 	int W = int(floor(window_width / (2.0f * fine_stride)));
@@ -408,6 +426,7 @@ log(os)
 	for (int x = 0; x <= 2 * W; ++x)
 		fine_samples.push_back(Vector3f((x - W) * fine_stride, (y - H) * fine_stride, 0.0f));
 
+	//initialization
 	feature.process(gray, 0.0f);
 	N = 0;
 	fine_train(warp);
@@ -428,12 +447,14 @@ rect_t MT::track(const unsigned char *gray)
 	}
 	feature.process(gray, roll);
 
+	//the first attempt
 	Warp w = warp;
 	if (log != NULL)
 		(*log) << "track at " << w.t.transpose() << " " << window(w.t) << endl;
 	w = fine_test(w);
 	float e = evaluate(w);
 	if (e > fast_threshold) {
+		//use coarse searching
 		++number_coarse;
 		Warp w2 = warp;
 		w2.sett(fast_test(warp));
@@ -461,12 +482,15 @@ rect_t MT::retrack(const unsigned char *gray, const vector<rect_t> &detections)
 	}
 	feature.process(gray, 0.0f);
 
+	//the first attempt
 	Warp w = warp;
 	w.setr(Vector3f(0.0f, 0.0f, 0.0f));
 	if (log != NULL)
 		(*log) << "track at " << w.t.transpose() << " " << window(w.t) << endl;
 	w = fine_test(w);
 	float e = evaluate(w);
+
+	//use coarse searching
 	Warp w2 = warp;
 	w2.setr(Vector3f(0.0f, 0.0f, 0.0f));
 	w2.sett(fast_test(warp));
@@ -478,6 +502,8 @@ rect_t MT::retrack(const unsigned char *gray, const vector<rect_t> &detections)
 		w = w2;
 		e = e2;
 	}
+
+	//use re-detection
 	for (auto d : detections) {
 		Warp w3 = warp;
 		w3.setr(Vector3f(0.0f, 0.0f, 0.0f));
@@ -531,6 +557,7 @@ void MT::update(Warp w, float e)
 		(*log) << "final rotation = " << w.r.transpose() << endl;
 		(*log) << "final error = " << e << endl;
 	}
+	//if the error is lower than threshold, we update the fine model
 	error = e;
 	if (e < fine_threshold) {
 		warp = w;
@@ -547,6 +574,7 @@ void MT::update(Warp w, float e)
 
 void MT::fast_train(Warp warp)
 {
+	//build the fine template on uniform 5x5 grid
 	rect_t rect = window(warp.t);
 	float fast_stride = sqrt(rectArea(rect) / fast_n);
 	feature.set_cell(fast_stride);
@@ -560,6 +588,7 @@ void MT::fast_train(Warp warp)
 	for (int x = 0; x <= 2 * W; ++x)
 		fast_samples.push_back(Vector2i(ox + (x - W) * stride, oy + (y - H) * stride));
 
+	//compute the features on the grid
 	fast_model = MatrixXf::Zero(8, fast_samples.size());
 	int x = int(rect.x + 0.5f);
 	int y = int(rect.y + 0.5f);
@@ -578,11 +607,14 @@ void MT::fine_train(Warp warp)
 	feature.set_cell(fine_cell);
 	feature.set_step(1);
 
+	//compute the features on the grid
 	MatrixXf model(32, fine_samples.size());
 	for (int i = 0; i < fine_samples.size(); ++i) {
 		Vector2f p = warp.transform2(fine_samples[i]);
 		feature.descriptor4(p.x(), p.y(), model.col(i).data());
 	}
+	
+	//update using a moving averaging manner
 	if (N == 0) {
 		N = 1;
 		fine_model = model;
@@ -595,6 +627,7 @@ void MT::fine_train(Warp warp)
 
 Vector3f MT::fast_test(Warp warp)
 {	
+	//locate the searching area
 	rect_t rect = window(warp.t);
 	float fast_stride = sqrt(rectArea(rect) / fast_n);
 	feature.set_cell(fast_stride);
@@ -608,6 +641,7 @@ Vector3f MT::fast_test(Warp warp)
 	int maxx = int(min(region.x + region.width, maxmaxx) - rect.width + 0.5f);
 	int maxy = int(min(region.y + region.height, maxmaxy) - rect.height + 0.5f);
 
+	//use slide window to find the best match
 	float best_score = 0.0f;
 	Vector3f best_translate = warp.t;
 	MatrixXf model(8, fast_samples.size());
@@ -637,6 +671,7 @@ Warp MT::fine_test(Warp warp)
 	rect_t rect = window(warp.t);
 	float fine_cell = sqrt(rectArea(rect) / cell_n);
 	feature.set_cell(fine_cell);
+	//use different interpolation step to accelerate the convergence
 	for (auto fine_step : fine_steps) {
 		if (fine_step > 2.0f * fine_cell)
 			continue;
@@ -695,6 +730,7 @@ void MT::hessian(Matrix<float, 6, 6> &H, float w, const Matrix<float, 2, 6> &dW,
 
 Warp MT::Lucas_Kanade(Warp warp)
 {	
+	//See "Lucas-Kanade 20 years on A unifying framework"
 	float last_E = 1.0f;
 	for (int iter = 0; iter < max_iteration; ++iter) {
 		++number_iteration;

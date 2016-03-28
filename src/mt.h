@@ -38,33 +38,33 @@ const float detect_threshold = 0.6f;
 const int cell_min = 1;
 const int cell_n = 150;
 
-//fast template contatins about fast_n features	
+//the fast template contains about fast_n points
 const int fast_n = 25;
 //the fast template moves at fast_step pixels
 const int fast_step = 2;
 //the search area of fast template is (1 + padding) * area_of_face
 const float padding = 1.6f;
-//when error is lower than threshold, carry out fast search
+//when error is lower than threshold, we carry out fast search
 const float fast_threshold = 0.5f;
 
-//fine template contatins about fine_n features
+//the fine template contains about points
 const int fine_n = 361;
 //steps of multi-scale Lucas-Kanade
 const int fine_steps[] = { 27, 9, 3, 1 };
-//if the error is lower than threshold, update the fine model
+//if the error is lower than threshold, we update the fine model
 const float fine_threshold = 0.4f;
 
 //The tracker try to call the detector if the average error over the last interval frames is lower than the threshold	
 const int detect_interval = 10;
 const float detect_threshold = 0.4f;
 
-//max number of iteration of each scale
+//the maximum number of iterations in each scale
 const int max_iteration = 9;
-//termination condition of iteration
+//the termination conditions
 const float translate_eps = 0.005f;
 const float error_eps = 0.001f;
 
-//sigmoid function
+//the constant in the sigmoid function
 const float sigmoid_factor = 7.141f;
 const float sigmoid_bias = 0.482f;
 
@@ -79,6 +79,7 @@ typedef struct rect_t {
 	float width;
 	float height;
 } rect_t;
+
 //related tools
 float rectArea(rect_t rect);
 float rectOverlap(rect_t a, rect_t b);
@@ -155,30 +156,32 @@ public:
 	//allocate storage for width * height gray image
 	Surf(int width, int height);
 
-	//generate rotation kernel
+	//generate the rotation kernel
 	void rotate(float angle, float kernel[4]);	
 	//build the integral image
 	void process(const unsigned char *gray, float angle);
-	//change Surf settings
+	//change cell and step
 	void set_cell(float cell);
 	void set_step(int step);
 
-	//the gradient histogram of a cell
+	//the histogram of gradient in a cell
 	inline float* cell_hist(int x, int y);
 	//the histogram in subpixel location using bilinear interpolation
 	inline void descriptor(float x, float y, float *f);
-	//corresponding gradient, i.e. df / (dx, dy)
+	//the corresponding gradient, i.e. df / (dx, dy)
 	inline void gradient(float x, float y, float *f, float *dx, float *dy);
 	//the descriptor and gradient of 2x2 cells
 	void descriptor4(float x, float y, float *f);
 	void gradient4(float x, float y, float *f, float *dx, float *dy);
 
 public:
+	//the reconfigured locations of the 2x2 cells
 	float A, X[4], Y[4];
+	//the image width, image height, cell size and step size
 	int W, H, C, step;
 
-private:
-	Data<float, 1> img;
+private:	
+	Data<float, 1> img;	
 	Data<int, 1> flag;
 	Data<float, 8> sum, hist, zero;
 };
@@ -206,10 +209,11 @@ public:
 	inline Vector2f gradient(Vector3f p, Matrix<float, 2, 6> &dW);
 	//update
 	void steepest(Matrix<float, 6, 1> parameters);
-	//get eular angles
+	//get euler angles
 	void euler(float &roll, float &yaw, float &pitch);
 
 public:
+	//the image center, focal length, rotaion vector and translation vector
 	Vector2f c;
 	float f;
 	Vector3f r;
@@ -223,7 +227,7 @@ private:
 class MT
 {
 public:
-	//init a tracker, omit os to turn off the log
+	//initialize a tracker (omit os to turn off the log)
 	MT(const unsigned char *gray, int width, int height, rect_t rect, ostream *os = NULL);
 	//track a new frame
 	rect_t track(const unsigned char *gray);
@@ -256,10 +260,12 @@ private:
 	float evaluate(Warp w);
 
 public:
+	//the image size, window size, current motion, current error, current euler angles
 	int image_width, image_height;
 	float window_width, window_height;
 	Warp warp;
 	float error, roll, yaw, pitch;
+	//the number of coarse searching, number of multi-scale LK and number of iterations
 	int number_coarse, number_MLK, number_iteration;
 
 private:
