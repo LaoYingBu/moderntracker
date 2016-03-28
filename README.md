@@ -1,25 +1,34 @@
 # Face Tracking
 
-Requirement: </br>
-1) opencv 3 or higher </br>
-2) eigen 3 or higher </br>
+This repo is the source code of the mobile face tracker and related demo code.
 
-Build: </br>
-please add "-O3 -msse2" for optimization, if possible </br>
+# Requirement
 
-Run: </br>
-1) Make sure "haarcascade_frontalface_default.xml" and the binary are in the same folder </br>
-2) ./mt benchmark </br>
-	Test the algorithm on MFT120. You must specify the path of the benchmark in common.h </br>
-3) ./mt camera </br>
-	Real-time face tracking using a camera. You must have a available webcamera.  </br>
-4) ./mt example.avi </br>
-	face tracking on existing video. You must make sure the video is up-right. </br>
+- opencv 3 or higher  
+- eigen 3 or higher  
 
-Code: </br>
-main.cpp 		the entry </br>
-common.*		libraries and tool functions </br>
-jsoncpp.*		json library, used to parse MFT120 (slightly modified from JSONcpp) </br>
-benchmark.*		code to evaluate the tracker on MFT120 </br>
-video.*			code to track face in a video or a camera </br>
-mt.*			the algorithm code </br>
+# Build
+
+please add "-O3 -msse2" for optimization, if possible  
+
+# Run
+
+Make sure "haarcascade_frontalface_default.xml" and the binary are in the same folder  
+- ./mt benchmark  
+	Test the algorithm on MFT120. Make sure the benchmark is available. (Specify the path in common.h)  
+- ./mt camera  
+	Track a face in real-time using a camera. Make sure your webcamera is available.  
+- ./mt example.avi  
+	Track a face in existing video. Make sure the video is up-right.  
+
+# Source code
+under the folder /src
+
+| file        | Content                                   |
+|-------------|-------------------------------------------|
+| main.cpp    | the entry                                 |
+| common.*    | libraries and tool functions              |
+| jsoncpp.*   | json library, used to parse MFT120        |
+| benchmark.* | code to evaluate the tracker on MFT120    |
+| video.*     | code to track face in a video or a camera |
+| **mt.***    | **the algorithm code**                    |
