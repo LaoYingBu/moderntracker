@@ -15,7 +15,7 @@ using namespace Eigen;
 const float PI_2 = acos(-1.0f) * 0.5f;
 
 /*
-//a faster configuration
+//a fast but not that accurate configuration
 const int cell_min = 1;
 const int fast_n = 16;
 const int fast_step = 4;
@@ -155,18 +155,21 @@ public:
 	//allocate storage for width * height gray image
 	Surf(int width, int height);
 
-	//rotate the image (virtually)
-	void rotate(float angle, float kernel[]);
+	//generate rotation kernel
+	void rotate(float angle, float kernel[4]);	
 	//build the integral image
 	void process(const unsigned char *gray, float angle);
 	//change Surf settings
 	void set_cell(float cell);
 	void set_step(int step);
 
-	//detailed computation
+	//the gradient histogram of a cell
 	inline float* cell_hist(int x, int y);
+	//the histogram in subpixel location using bilinear interpolation
 	inline void descriptor(float x, float y, float *f);
+	//corresponding gradient, i.e. df / (dx, dy)
 	inline void gradient(float x, float y, float *f, float *dx, float *dy);
+	//the descriptor and gradient of 2x2 cells
 	void descriptor4(float x, float y, float *f);
 	void gradient4(float x, float y, float *f, float *dx, float *dy);
 
@@ -224,25 +227,32 @@ public:
 	MT(const unsigned char *gray, int width, int height, rect_t rect, ostream *os = NULL);
 	//track a new frame
 	rect_t track(const unsigned char *gray);
-	//track a new frame with the help of some detection result
+	//track a new frame with the help of some re-detection
 	rect_t retrack(const unsigned char *gray, const vector<rect_t> &detections);
-	//whether the face is succesfully tracked now
+	//check whether the face is succesfully tracked now
 	bool check();
 
 private:
+	//the conversion between the rectangle and the translation
 	Vector3f locate(rect_t rect);
 	rect_t window(Vector3f translate);
 
+	//update the motion and the template depending on the error
 	void update(Warp w, float e);
+	//train and test the fast and fine templates
 	void fast_train(Warp w);
 	void fine_train(Warp w);
 	Vector3f fast_test(Warp w);
 	Warp fine_test(Warp w);
 
+	//sigmoid function
 	inline float sigmoid(float x);
+	//handcraft hessian matrix computation
 	inline void hessian(Matrix<float, 6, 6> &H, float w, const Matrix<float, 2, 6> &dW, const Matrix<float, 32, 2> &dF);
 
+	//Lucas-Kanade algorithm
 	Warp Lucas_Kanade(Warp w);
+	//evaluate the motion
 	float evaluate(Warp w);
 
 public:
