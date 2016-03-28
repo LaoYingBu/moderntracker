@@ -99,7 +99,9 @@ namespace video {
 					line(img, p[i], p[(i + 1) % 4], Scalar(0, 0, 255), 3);
 			}
 			imshow(title, img);
-			waitKey(path != "camera" ? 1 : 10);
+			int key = waitKey(path == "camera" ? 1 : 10);
+			if (key != -1)
+				break;
 		}
 
 		reader.release();
