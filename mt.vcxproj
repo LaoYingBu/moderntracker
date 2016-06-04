@@ -76,6 +76,7 @@
     <ClCompile Include="src\jsoncpp.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\mt.cpp" />
+    <ClCompile Include="src\object.cpp" />
     <ClCompile Include="src\video.cpp" />
   </ItemGroup>
   <ItemGroup>

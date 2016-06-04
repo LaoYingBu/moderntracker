@@ -46,7 +46,7 @@ namespace benchmark
 				vector<Rect2f> detections;
 
 				if (mt == NULL) {
-					result = gt;			
+					result = gt;
 					mt = new MT(gray.data, gray.cols, gray.rows, cv2mt(result), verbose ? &log : NULL);
 				}
 				else {					

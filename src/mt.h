@@ -36,7 +36,7 @@ const float detect_threshold = 0.6f;
 
 //each SURF feature is 4 cells, each cell covers max(area_of_face / cell_n, 4 * cell_min^2) pixels
 const int cell_min = 1;
-const int cell_n = 150;
+const int cell_n = 169;
 
 //the fast template contains about fast_n points
 const int fast_n = 25;
@@ -48,7 +48,7 @@ const float padding = 1.6f;
 const float fast_threshold = 0.5f;
 
 //the fine template contains about points
-const int fine_n = 361;
+const int fine_n = 625;
 //steps of multi-scale Lucas-Kanade
 const int fine_steps[] = { 27, 9, 3, 1 };
 //if the error is lower than threshold, we update the fine model
